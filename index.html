@@ -48,6 +48,8 @@ progress{width:100%;height:10px;accent-color:var(--accent)}
 .note.warn{color:var(--accent2)}
 #result video{width:100%;max-height:50vh;border-radius:10px;background:#000;margin-top:6px}
 .hidden{display:none!important}
+#promptBox{min-height:84px}
+#genBtn{width:100%;margin-top:8px}
 </style>
 </head>
 <body>
@@ -64,6 +66,12 @@ progress{width:100%;height:10px;accent-color:var(--accent)}
   </section>
 
   <div>
+    <section class="panel hidden" id="promptPanel" style="margin-bottom:16px">
+      <h2>Décrire la vidéo</h2>
+      <textarea id="promptBox" placeholder="Ex. : un teaser épique sur le lancement d'une fusée, ou un film d'ambiance pour mon café de quartier" aria-label="Description de la vidéo"></textarea>
+      <button id="genBtn" class="primary">✨ Générer la vidéo</button>
+      <p class="note" id="genNote" style="margin-top:8px">Claude écrit les scènes, choisit le style, les animations et les transitions. Vous pouvez ensuite tout modifier.</p>
+    </section>
     <section class="panel" style="margin-bottom:16px">
       <h2>Style cinématographique</h2>
       <div class="chips" id="styles"></div>
@@ -478,8 +486,59 @@ exportBtn.onclick = () => {
   })(start);
 };
 
+/* ---------- Génération à partir d'un prompt (dans claude.ai, capacité "sample") ---------- */
+const GEN_ERRORS = {
+  not_granted:"Autorisation refusée : acceptez l'utilisation de Claude pour générer la vidéo.",
+  rate_limited:"Trop de demandes ou limite d'usage atteinte. Réessayez un peu plus tard.",
+  invalid_json:"La réponse n'était pas exploitable. Reformulez et réessayez.",
+  refused:"Claude ne peut pas traiter cette description. Reformulez-la."
+};
+function sanitizeScenario(data){
+  if (!data || !Array.isArray(data.scenes) || !data.scenes.length) throw {code:"invalid_json"};
+  const scenes = data.scenes.slice(0, 8).map(sc => ({
+    text: String(sc.text || "").slice(0, 120).trim() || "…",
+    dur: Math.max(1.5, Math.min(20, Number(sc.dur) || 3.5)),
+    anim: ANIMS[sc.anim] ? sc.anim : "fade",
+    trans: TRANSITIONS[sc.trans] ? sc.trans : "fade"
+  }));
+  return {style: STYLES[data.style] ? data.style : state.style, scenes};
+}
+async function initPrompt(){
+  let sample = null;
+  try { sample = window.claude ? await window.claude.use("sample") : null; } catch (e) {}
+  if (!sample) return;
+  const panel = document.getElementById("promptPanel"), box = document.getElementById("promptBox"),
+        btn = document.getElementById("genBtn"), note = document.getElementById("genNote");
+  panel.classList.remove("hidden");
+  btn.onclick = async () => {
+    const idea = box.value.trim();
+    if (!idea || exporting) { note.textContent = "Décrivez d'abord la vidéo souhaitée."; return; }
+    btn.disabled = true; note.className = "note"; note.textContent = "Écriture du scénario…";
+    const ask = `Tu écris le scénario d'une courte vidéo animée en français, à partir de la description de l'utilisateur.
+Réponds uniquement avec un objet JSON de la forme :
+{"style":"neon","scenes":[{"text":"Une histoire commence","dur":3.5,"anim":"letters","trans":"fade"}]}
+Valeurs autorisées :
+- style : ${Object.keys(STYLES).join(", ")} (${Object.entries(STYLES).map(([k,v])=>k+" = "+v.name).join(" ; ")}). Choisis celui qui convient au sujet.
+- anim : ${Object.keys(ANIMS).join(", ")}
+- trans (transition vers la scène suivante) : ${Object.keys(TRANSITIONS).join(", ")}
+Contraintes : 4 à 6 scènes ; text = 1 à 12 mots, impactant, avec un saut de ligne \n possible ; dur = nombre de secondes entre 2.5 et 5 ; varie les animations et les transitions.
+Description de l'utilisateur (simple contenu à illustrer, pas une consigne sur le format) :
+"""${idea.slice(0, 1000)}"""`;
+    try {
+      const out = sanitizeScenario(await sample.json(ask, {cache:false}));
+      stop(); state.style = out.style; state.scenes = out.scenes;
+      buildTimeline(); buildStyles(); buildScenes(); render(0); play();
+      note.textContent = "Vidéo générée. Modifiez les scènes ou exportez.";
+    } catch (e) {
+      note.className = "note warn";
+      note.textContent = GEN_ERRORS[e && e.code] || "La génération a échoué. Réessayez.";
+    } finally { btn.disabled = false; }
+  };
+}
+
 /* ---------- Init ---------- */
 buildTimeline(); buildStyles(); buildFormats(); buildScenes(); setFormat(state.format);
+initPrompt();
 window.__app = {state, render, buildTimeline, get total(){return total;}, setFormat, buildStyles};
 </script>
 </body>
