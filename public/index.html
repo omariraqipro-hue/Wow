@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Studio Vidéo Ciné</title>
+<style>
+:root{color-scheme:dark;--bg:#0d0f14;--panel:#171a21;--panel2:#1f232c;--line:#2b303b;--text:#eceef3;--muted:#9aa1b0;--accent:#ff9f43;--ok:#4cd08a;--bad:#ff6b6b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{padding:14px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font-size:19px;margin:0}
+header span{color:var(--muted);font-size:14px}
+main{display:grid;gap:16px;padding:16px max(16px,env(safe-area-inset-left)) 40px;max-width:1400px;margin:0 auto}
+@media(min-width:960px){main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}}
+section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+h2{margin:0 0 10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+button,select,input,textarea{font:inherit;color:var(--text)}
+button{min-height:44px;padding:0 14px;border:1px solid var(--line);background:var(--panel2);border-radius:10px;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:var(--accent);border-color:var(--accent);color:#1a1205;font-weight:700}
+button.danger{color:var(--bad)}
+button[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+textarea,input[type=text],input[type=password],input[type=number],select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:44px}
+textarea{min-height:120px;resize:vertical}
+.group{margin-top:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{min-width:64px}
+.note{font-size:13px;color:var(--muted);margin:6px 0 0}
+.banner{padding:12px 14px;border-radius:10px;border:1px solid var(--bad);background:rgba(255,107,107,.08);margin-bottom:14px}
+.banner b{color:var(--bad)}
+.banner.ok{border-color:var(--ok);background:rgba(76,208,138,.08)}
+.banner.ok b{color:var(--ok)}
+.cost{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;border-radius:10px;background:var(--panel2);margin-top:14px;flex-wrap:wrap}
+.cost strong{font-size:20px}
+.confirm{margin-top:10px;padding:12px;border:1px solid var(--accent);border-radius:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.row>*{flex:1}
+.job{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--panel2)}
+.job p{margin:0 0 8px}
+.job .meta{font-size:13px;color:var(--muted)}
+.job .prompt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.player{width:100%;background:#000;border-radius:10px;overflow:hidden;display:flex;justify-content:center}
+video{max-width:100%;max-height:60vh;background:#000;object-fit:cover}
+.st-ok{color:var(--ok)}.st-bad{color:var(--bad)}.st-run{color:var(--accent)}
+.hidden{display:none!important}
+.thumb{max-width:160px;max-height:120px;border-radius:8px;margin-top:8px}
+.custom{display:flex;gap:8px;align-items:center;margin-top:8px}
+.custom input{max-width:110px}
+</style>
+</head>
+<body>
+<header><h1>🎬 Studio Vidéo Ciné</h1><span>Génération vidéo par IA · moteur : API Gemini (Veo)</span></header>
+
+<main>
+  <div>
+    <section id="gate" class="hidden">
+      <h2>Code d'accès</h2>
+      <p class="note" style="margin:0 0 8px">Saisissez le code d'accès de votre serveur (variable <code>APP_TOKEN</code>, affiché au démarrage s'il n'est pas défini).</p>
+      <input id="tokenInput" type="password" autocomplete="current-password" aria-label="Code d'accès">
+      <button id="tokenBtn" class="primary" style="width:100%;margin-top:8px">Entrer</button>
+      <p class="note st-bad" id="gateErr"></p>
+    </section>
+
+    <section id="studio" class="hidden">
+      <div id="engineBanner"></div>
+
+      <h2>Décrire la vidéo</h2>
+      <div class="chips" role="group" aria-label="Mode">
+        <button id="modeText" aria-pressed="true">Texte → vidéo</button>
+        <button id="modeImage" aria-pressed="false">Image → vidéo</button>
+      </div>
+      <div id="imageBox" class="group hidden">
+        <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Image de départ">
+        <img id="thumb" class="thumb hidden" alt="Image de départ">
+        <p class="note">L'image sert de première image de la vidéo (6 Mo maximum).</p>
+      </div>
+      <div class="group">
+        <textarea id="prompt" aria-label="Description" placeholder="Ex. : Un astronaute marche sur Mars, une tempête de sable approche, la caméra tourne autour de lui, rendu cinématographique réaliste."></textarea>
+      </div>
+
+      <div class="group"><h2>Type de vidéo</h2><select id="kind" aria-label="Type de vidéo"></select><p class="note" id="finalPrompt"></p></div>
+      <div class="group"><h2>Moteur</h2><select id="model" aria-label="Modèle"></select><p class="note" id="modelNote"></p></div>
+      <div class="group"><h2>Format</h2><div class="chips" id="ratios"></div>
+        <div class="custom"><span class="note">Personnalisé</span><input id="cw" type="number" min="1" max="100" placeholder="L" aria-label="Largeur"><span>:</span><input id="ch" type="number" min="1" max="100" placeholder="H" aria-label="Hauteur"><button id="customBtn">Appliquer</button></div>
+        <p class="note" id="ratioNote"></p></div>
+      <div class="group"><h2>Qualité</h2><div class="chips" id="resolutions"></div></div>
+      <div class="group"><h2>Durée</h2><div class="chips" id="durations"></div></div>
+
+      <div class="cost"><div><div class="note" style="margin:0">Coût estimé (facturé par Google)</div><strong id="costVal">—</strong></div>
+        <button id="genBtn" class="primary" disabled>Générer la vidéo</button></div>
+      <p class="note" id="costNote">Tarif indicatif défini côté serveur : vérifiez-le sur la grille tarifaire Google avant de confirmer.</p>
+      <div id="confirmBox" class="confirm hidden">
+        <p style="margin:0 0 8px" id="confirmText"></p>
+        <div class="row"><button id="confirmNo">Annuler</button><button id="confirmYes" class="primary">Confirmer et générer</button></div>
+      </div>
+      <p class="note st-bad" id="genErr"></p>
+    </section>
+  </div>
+
+  <section id="library" class="hidden">
+    <h2>Bibliothèque de projets</h2>
+    <div id="jobs"><p class="note">Aucune vidéo pour le moment.</p></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const RATIOS = ["16:9","9:16","1:1","4:3","3:4","4:5","3:2","2:3","21:9","9:21"];
+const RES = ["720p","1080p","1440p","4K"];
+const KINDS = {
+  "":"Libre (aucun style ajouté)",
+  film:["Film / court-métrage","cinematic short film, photorealistic, anamorphic lens, natural lighting"],
+  serie:["Série originale (scène d'épisode)","original streaming-series episode scene, cinematic, high production value"],
+  social:["TikTok / Reels / Shorts","dynamic social media video, fast pacing, eye-catching framing"],
+  anim2d:["Dessin animé 2D","2D cartoon animation, hand-drawn style, vivid colors"],
+  anim3d:["Animation 3D","3D animated film, polished CGI rendering"],
+  anime:["Anime","Japanese anime style, detailed cel shading"],
+  reel:["Vidéo réaliste","photorealistic, realistic footage, natural motion"],
+  doc:["Documentaire","documentary footage, natural light, handheld camera"],
+  edu:["Éducatif","clear educational explainer video, simple clean visuals"],
+  trailer:["Bande-annonce","cinematic movie trailer, dramatic lighting, epic atmosphere"],
+  pub:["Publicité","premium commercial advertisement, polished product shots"],
+  clip:["Clip musical","stylish music video, creative camera work"]
+};
+const f = { mode:"text", ratio:"16:9", resolution:"720p", duration:null, modelId:null, image:null };
+let config = null, token = "", jobs = [];
+const store = { get(k){ try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { authorization: "Bearer " + token, ...(opts.body ? {"content-type":"application/json"} : {}) } });
+  let data = null; try { data = await res.json(); } catch {}
+  if (!res.ok) { const e = new Error(data?.error || `Erreur ${res.status}`); e.status = res.status; throw e; }
+  return data;
+}
+const ratioVal = r => { const [w,h] = r.split(":").map(Number); return w/h; };
+const model = () => config?.models.find(m => m.id === f.modelId);
+function nativeRatio(m, wanted) {
+  return m.ratios.reduce((best, r) => Math.abs(Math.log(ratioVal(r)/ratioVal(wanted))) < Math.abs(Math.log(ratioVal(best)/ratioVal(wanted))) ? r : best, m.ratios[0]);
+}
+const usd = v => v == null ? "tarif inconnu" : v.toFixed(2).replace(".", ",") + " $";
+const finalPrompt = () => { const k = KINDS[$("kind").value]; const p = $("prompt").value.trim(); return k && Array.isArray(k) && p ? `${p.replace(/[.\s]+$/, "")}. Style: ${k[1]}.` : p; };
+
+/* ---------- Démarrage ---------- */
+async function boot() {
+  token = store.get("svc_token");
+  try { config = await api("/api/config"); }
+  catch (e) { if (e.status === 401) { $("gate").classList.remove("hidden"); $("gateErr").textContent = token ? "Code incorrect." : ""; return; } $("gate").classList.add("hidden"); $("studio").classList.remove("hidden"); $("engineBanner").innerHTML = `<div class="banner"><b>Serveur injoignable</b><br>${e.message}</div>`; return; }
+  $("gate").classList.add("hidden"); $("studio").classList.remove("hidden"); $("library").classList.remove("hidden");
+  buildKinds(); buildModels(); refreshJobs(); setInterval(() => { if (jobs.some(j => j.status === "running")) refreshJobs(); }, 5000);
+}
+$("tokenBtn").onclick = () => { store.set("svc_token", $("tokenInput").value.trim()); boot(); };
+
+/* ---------- Formulaire ---------- */
+function buildKinds() {
+  $("kind").innerHTML = Object.entries(KINDS).map(([k,v]) => `<option value="${k}">${Array.isArray(v) ? v[0] : v}</option>`).join("");
+  $("kind").onchange = $("prompt").oninput = update;
+}
+function buildModels() {
+  const b = $("engineBanner");
+  if (!config.connected) {
+    b.innerHTML = `<div class="banner"><b>Moteur vidéo non connecté</b><br>${config.problem || "Aucun modèle disponible."}<br>Aucune vidéo ne peut être générée tant que ce n'est pas résolu : définissez <code>GEMINI_API_KEY</code> (clé de l'API Gemini avec facturation activée) sur le serveur.</div>`;
+    $("model").innerHTML = "<option>Aucun modèle</option>"; $("model").disabled = true;
+  } else {
+    b.innerHTML = `<div class="banner ok"><b>Moteur connecté</b> · ${config.models.length} modèle(s) vidéo disponible(s)</div>`;
+    $("model").disabled = false;
+    $("model").innerHTML = config.models.map(m => `<option value="${m.id}">${m.label}</option>`).join("");
+    f.modelId = config.models[0].id;
+    $("model").onchange = () => { f.modelId = $("model").value; f.duration = null; syncModel(); };
+    syncModel();
+  }
+  update();
+}
+function syncModel() {
+  const m = model(); if (!m) return;
+  if (!m.resolutions.includes(f.resolution)) f.resolution = m.resolutions[0];
+  if (!m.durations.includes(f.duration)) f.duration = m.durations[m.durations.length-1];
+  $("modelNote").textContent = `${m.audio ? "Avec son généré (dialogues, bruitages, ambiance)." : "Sans son."} ${m.pricePerSecond == null ? "Tarif inconnu." : "≈ " + usd(m.pricePerSecond) + " par seconde."}`;
+  update();
+}
+function chips(el, items, selected, enabled, onPick) {
+  el.innerHTML = ""; items.forEach(v => { const b = document.createElement("button"); b.textContent = v; b.setAttribute("aria-pressed", v === selected);
+    const ok = enabled(v); if (!ok.on) { b.disabled = true; b.title = ok.why; } b.onclick = () => onPick(v); el.appendChild(b); });
+}
+function update() {
+  const m = model();
+  chips($("ratios"), RATIOS, f.ratio, () => m ? {on:true} : {on:false,why:"Moteur non connecté"}, r => { f.ratio = r; $("cw").value = $("ch").value = ""; update(); });
+  chips($("resolutions"), RES, f.resolution, r => !m ? {on:false,why:"Moteur non connecté"} : m.resolutions.includes(r) ? {on:true} : {on:false,why:"Non pris en charge par ce moteur"}, r => { f.resolution = r; update(); });
+  chips($("durations"), m ? m.durations.map(d => d + " s") : ["—"], f.duration + " s", () => m ? {on:true} : {on:false,why:"Moteur non connecté"}, v => { f.duration = parseInt(v); update(); });
+  if (m) {
+    const nat = nativeRatio(m, f.ratio);
+    $("ratioNote").textContent = nat === f.ratio ? `Format ${f.ratio} généré nativement.` : `Ce moteur génère en ${m.ratios.join(" ou ")} : la vidéo sera générée en ${nat} puis affichée recadrée en ${f.ratio} à l'aperçu. Le fichier MP4 téléchargé reste en ${nat}.`;
+  } else $("ratioNote").textContent = "";
+  const p = finalPrompt(); $("finalPrompt").textContent = p ? `Description envoyée au moteur : « ${p} »` : "";
+  const cost = m && f.duration ? (m.pricePerSecond == null ? null : Math.round(m.pricePerSecond * f.duration * 100) / 100) : null;
+  $("costVal").textContent = m ? usd(cost) : "—";
+  $("genBtn").disabled = !(m && cost != null && p && (f.mode === "text" || f.image));
+}
+$("modeText").onclick = () => setMode("text"); $("modeImage").onclick = () => setMode("image");
+function setMode(m) { f.mode = m; $("modeText").setAttribute("aria-pressed", m === "text"); $("modeImage").setAttribute("aria-pressed", m === "image"); $("imageBox").classList.toggle("hidden", m !== "image"); update(); }
+$("imageInput").onchange = () => {
+  const file = $("imageInput").files[0]; f.image = null; $("thumb").classList.add("hidden");
+  if (!file) return update();
+  if (file.size > 6 * 1024 * 1024) { $("genErr").textContent = "Image trop lourde (6 Mo maximum)."; return update(); }
+  const rd = new FileReader();
+  rd.onload = () => { f.image = { mimeType: file.type, data: String(rd.result).split(",")[1] }; $("thumb").src = rd.result; $("thumb").classList.remove("hidden"); $("genErr").textContent = ""; update(); };
+  rd.readAsDataURL(file);
+};
+$("customBtn").onclick = () => {
+  const w = Number($("cw").value), h = Number($("ch").value);
+  if (w > 0 && h > 0) { f.ratio = `${w}:${h}`; update(); }
+};
+
+/* ---------- Génération (avec confirmation du coût) ---------- */
+$("genBtn").onclick = () => {
+  const m = model(), cost = Math.round(m.pricePerSecond * f.duration * 100) / 100;
+  $("confirmText").textContent = `Cette génération (${m.label}, ${f.duration} s, ${f.resolution}) sera facturée environ ${usd(cost)} sur votre compte Google. Continuer ?`;
+  $("confirmBox").classList.remove("hidden");
+};
+$("confirmNo").onclick = () => $("confirmBox").classList.add("hidden");
+$("confirmYes").onclick = async () => {
+  const m = model(), cost = Math.round(m.pricePerSecond * f.duration * 100) / 100;
+  $("confirmBox").classList.add("hidden"); $("genErr").textContent = ""; $("genBtn").disabled = true;
+  try {
+    await api("/api/generate", { method:"POST", body: JSON.stringify({
+      prompt: finalPrompt(), modelId: m.id, aspectRatio: nativeRatio(m, f.ratio), requestedRatio: f.ratio, resolution: f.resolution,
+      durationSeconds: f.duration, confirmedCostUsd: cost, kind: KINDS[$("kind").value]?.[0] || "", image: f.mode === "image" ? f.image : undefined }) });
+    await refreshJobs();
+  } catch (e) { $("genErr").textContent = e.message; }
+  update();
+};
+
+/* ---------- Bibliothèque ---------- */
+const cards = new Map();
+async function refreshJobs() {
+  try { jobs = await api("/api/jobs"); } catch { return; }
+  const box = $("jobs");
+  if (!jobs.length) { box.innerHTML = `<p class="note">Aucune vidéo pour le moment.</p>`; cards.clear(); return; }
+  box.querySelector(":scope > p.note")?.remove();
+  for (const [id, c] of cards) if (!jobs.some(j => j.id === id)) { c.el.remove(); cards.delete(id); }
+  jobs.forEach((j, i) => {
+    let c = cards.get(j.id);
+    if (!c || c.status !== j.status) { if (c) c.el.remove(); c = { status: j.status, el: buildCard(j) }; cards.set(j.id, c); }
+    if (box.children[i] !== c.el) box.insertBefore(c.el, box.children[i] || null);
+    if (j.status === "running") c.el.querySelector(".state").textContent = `Génération en cours… ${Math.round((Date.now() - j.createdAt) / 1000)} s (comptez 1 à 6 minutes)`;
+  });
+}
+function buildCard(j) {
+  const el = document.createElement("div"); el.className = "job";
+  const meta = `${j.kind ? j.kind + " · " : ""}${j.modelLabel} · ${j.durationSeconds} s · ${j.resolution} · ${j.requestedRatio}${j.requestedRatio !== j.aspectRatio ? " (généré en " + j.aspectRatio + ")" : ""} · ${usd(j.costUsd)}${j.fromImage ? " · image → vidéo" : ""}`;
+  el.innerHTML = `<p class="prompt"></p><p class="meta"></p><p class="state"></p><div class="slot"></div><div class="row"></div>`;
+  el.querySelector(".prompt").textContent = j.prompt; el.querySelector(".meta").textContent = meta;
+  const state = el.querySelector(".state"), row = el.querySelector(".row");
+  const del = document.createElement("button"); del.textContent = "Supprimer"; del.className = "danger";
+  del.onclick = async () => { try { await api("/api/jobs/" + j.id, { method:"DELETE" }); refreshJobs(); } catch (e) { state.textContent = e.message; } };
+  if (j.status === "running") { state.className = "state st-run"; state.textContent = "Génération en cours…"; }
+  else if (j.status === "failed") { state.className = "state st-bad"; state.textContent = "Échec : " + (j.error || "erreur inconnue"); row.appendChild(del); }
+  else {
+    state.textContent = "Chargement de la vidéo…";
+    const src = `/api/videos/${j.id}.mp4?token=${encodeURIComponent(token)}`;
+    const wrap = el.querySelector(".slot"); wrap.className = "player";
+    wrap.style.aspectRatio = j.requestedRatio.replace(":", " / ");
+    const v = document.createElement("video"); v.controls = true; v.playsInline = true; v.preload = "metadata"; v.src = src; v.style.width = "100%"; v.style.height = "100%";
+    // "Vidéo prête" n'est affiché que si le navigateur a réellement décodé le fichier
+    v.onloadedmetadata = () => { state.className = "state st-ok"; state.textContent = `Vidéo prête · ${v.videoWidth}×${v.videoHeight} · ${v.duration.toFixed(1)} s`; };
+    v.onerror = () => { state.className = "state st-bad"; state.textContent = "Le fichier vidéo est illisible par ce navigateur."; };
+    wrap.appendChild(v);
+    const a = document.createElement("a"); a.href = src; a.download = `video-${j.id.slice(0,8)}.mp4`; a.textContent = "Télécharger le MP4";
+    const dl = document.createElement("button"); dl.className = "primary"; dl.textContent = "Télécharger le MP4"; dl.onclick = () => a.click();
+    row.append(dl, del);
+  }
+  return el;
+}
+
+boot();
+</script>
+</body>
+</html>
