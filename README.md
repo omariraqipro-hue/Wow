@@ -37,3 +37,9 @@ capacités et les tarifs par modèle (`server/server.js`, tableau `CAPS`) vienne
 les modèles Veo réellement accessibles avec votre clé, et renvoie tel quel tout message d'erreur de l'API.
 Les tests (`test/mock-veo.js`) utilisent un faux moteur : ils valident le code du serveur, pas la qualité ni
 le comportement du vrai moteur.
+
+## Déploiement en un clic sur Render
+`render.yaml` décrit le service (écrit de mémoire, non testé). Ouvrez
+`https://render.com/deploy?repo=https://github.com/omariraqipro-hue/Wow/tree/claude/animated-video-generator-8w28eu`,
+collez votre `GEMINI_API_KEY` quand Render la demande ; `APP_TOKEN` est généré, lisez-le dans l'onglet Environment.
+Render doit pouvoir lire le dépôt (public, ou compte GitHub connecté). Le plan gratuit s'endort et efface les vidéos au redémarrage.
