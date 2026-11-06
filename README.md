@@ -9,6 +9,7 @@ appelle l'API Gemini (modèles **Veo**), télécharge le MP4 et le garde dans la
 - Ratios, résolutions et durées limités à ce que le modèle accepte (les autres sont grisés ou adaptés).
 - Coût affiché avant génération, confirmation obligatoire, vérifiée aussi côté serveur.
 - Lecture dans l'appli, téléchargement MP4, bibliothèque de projets.
+- Bibliothèque de 39 styles (dessin et animation, ambiances cinéma, genres) + styles personnels : ce sont des consignes ajoutées à votre description, pas un rendu garanti.
 - « Vidéo prête » n'apparaît que si le navigateur a réellement décodé le fichier.
 
 ## Pas encore là

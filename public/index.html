@@ -80,7 +80,14 @@ video{max-width:100%;max-height:60vh;background:#000;object-fit:cover}
         <textarea id="prompt" aria-label="Description" placeholder="Ex. : Un astronaute marche sur Mars, une tempête de sable approche, la caméra tourne autour de lui, rendu cinématographique réaliste."></textarea>
       </div>
 
-      <div class="group"><h2>Type de vidéo</h2><select id="kind" aria-label="Type de vidéo"></select><p class="note" id="finalPrompt"></p></div>
+      <div class="group"><h2>Style</h2><select id="kind" aria-label="Style"></select>
+        <button id="newStyleBtn" style="width:100%;margin-top:8px">＋ Créer mon style</button>
+        <div id="newStyleBox" class="confirm hidden">
+          <input id="nsName" type="text" maxlength="40" placeholder="Nom du style" aria-label="Nom du style">
+          <textarea id="nsHint" style="min-height:80px;margin-top:8px" maxlength="400" placeholder="Décrivez son look (couleurs, matières, lumière, mouvements de caméra…)" aria-label="Description du style"></textarea>
+          <div class="row"><button id="nsCancel">Annuler</button><button id="nsSave" class="primary">Enregistrer</button></div>
+        </div>
+        <p class="note" id="finalPrompt"></p></div>
       <div class="group"><h2>Moteur</h2><select id="model" aria-label="Modèle"></select><p class="note" id="modelNote"></p></div>
       <div class="group"><h2>Format</h2><div class="chips" id="ratios"></div>
         <div class="custom"><span class="note">Personnalisé</span><input id="cw" type="number" min="1" max="100" placeholder="L" aria-label="Largeur"><span>:</span><input id="ch" type="number" min="1" max="100" placeholder="H" aria-label="Hauteur"><button id="customBtn">Appliquer</button></div>
@@ -105,26 +112,12 @@ video{max-width:100%;max-height:60vh;background:#000;object-fit:cover}
   </section>
 </main>
 
+<script src="styles.js"></script>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
 const RATIOS = ["16:9","9:16","1:1","4:3","3:4","4:5","3:2","2:3","21:9","9:21"];
 const RES = ["720p","1080p","1440p","4K"];
-const KINDS = {
-  "":"Libre (aucun style ajouté)",
-  film:["Film / court-métrage","cinematic short film, photorealistic, anamorphic lens, natural lighting"],
-  serie:["Série originale (scène d'épisode)","original streaming-series episode scene, cinematic, high production value"],
-  social:["TikTok / Reels / Shorts","dynamic social media video, fast pacing, eye-catching framing"],
-  anim2d:["Dessin animé 2D","2D cartoon animation, hand-drawn style, vivid colors"],
-  anim3d:["Animation 3D","3D animated film, polished CGI rendering"],
-  anime:["Anime","Japanese anime style, detailed cel shading"],
-  reel:["Vidéo réaliste","photorealistic, realistic footage, natural motion"],
-  doc:["Documentaire","documentary footage, natural light, handheld camera"],
-  edu:["Éducatif","clear educational explainer video, simple clean visuals"],
-  trailer:["Bande-annonce","cinematic movie trailer, dramatic lighting, epic atmosphere"],
-  pub:["Publicité","premium commercial advertisement, polished product shots"],
-  clip:["Clip musical","stylish music video, creative camera work"]
-};
 const f = { mode:"text", ratio:"16:9", resolution:"720p", duration:null, modelId:null, image:null };
 let config = null, token = "", jobs = [];
 const store = { get(k){ try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
@@ -141,7 +134,7 @@ function nativeRatio(m, wanted) {
   return m.ratios.reduce((best, r) => Math.abs(Math.log(ratioVal(r)/ratioVal(wanted))) < Math.abs(Math.log(ratioVal(best)/ratioVal(wanted))) ? r : best, m.ratios[0]);
 }
 const usd = v => v == null ? "tarif inconnu" : v.toFixed(2).replace(".", ",") + " $";
-const finalPrompt = () => { const k = KINDS[$("kind").value]; const p = $("prompt").value.trim(); return k && Array.isArray(k) && p ? `${p.replace(/[.\s]+$/, "")}. Style: ${k[1]}.` : p; };
+const finalPrompt = () => { const k = styleById($("kind").value); const p = $("prompt").value.trim(); return k && p ? `${p.replace(/[.\s]+$/, "")}. Style: ${k.hint}.` : p; };
 
 /* ---------- Démarrage ---------- */
 async function boot() {
@@ -154,10 +147,29 @@ async function boot() {
 $("tokenBtn").onclick = () => { store.set("svc_token", $("tokenInput").value.trim()); boot(); };
 
 /* ---------- Formulaire ---------- */
+function customStyles() { try { return JSON.parse(store.get("svc_styles") || "[]"); } catch { return []; } }
+function styleById(id) {
+  for (const g of STYLE_LIBRARY) { const it = g.items.find(x => x[0] === id); if (it) return { label: it[1], hint: it[2] }; }
+  const c = customStyles().find(x => x.id === id); return c ? { label: c.label, hint: c.hint } : null;
+}
 function buildKinds() {
-  $("kind").innerHTML = Object.entries(KINDS).map(([k,v]) => `<option value="${k}">${Array.isArray(v) ? v[0] : v}</option>`).join("");
+  const cur = $("kind").value, mine = customStyles();
+  const opt = (v, l) => `<option value="${v}">${l.replace(/</g, "&lt;")}</option>`;
+  $("kind").innerHTML = opt("", "Libre (aucun style ajouté)")
+    + (mine.length ? `<optgroup label="Mes styles">${mine.map(c => opt(c.id, c.label)).join("")}</optgroup>` : "")
+    + STYLE_LIBRARY.map(g => `<optgroup label="${g.group}">${g.items.map(i => opt(i[0], i[1])).join("")}</optgroup>`).join("");
+  if (cur && styleById(cur)) $("kind").value = cur;
   $("kind").onchange = $("prompt").oninput = update;
 }
+$("newStyleBtn").onclick = () => $("newStyleBox").classList.remove("hidden");
+$("nsCancel").onclick = () => $("newStyleBox").classList.add("hidden");
+$("nsSave").onclick = () => {
+  const label = $("nsName").value.trim(), hint = $("nsHint").value.trim();
+  if (!label || !hint) return;
+  const id = "c" + Date.now();
+  store.set("svc_styles", JSON.stringify([...customStyles(), { id, label, hint }]));
+  buildKinds(); $("kind").value = id; $("nsName").value = $("nsHint").value = ""; $("newStyleBox").classList.add("hidden"); update();
+};
 function buildModels() {
   const b = $("engineBanner");
   if (!config.connected) {
@@ -226,7 +238,7 @@ $("confirmYes").onclick = async () => {
   try {
     await api("/api/generate", { method:"POST", body: JSON.stringify({
       prompt: finalPrompt(), modelId: m.id, aspectRatio: nativeRatio(m, f.ratio), requestedRatio: f.ratio, resolution: f.resolution,
-      durationSeconds: f.duration, confirmedCostUsd: cost, kind: KINDS[$("kind").value]?.[0] || "", image: f.mode === "image" ? f.image : undefined }) });
+      durationSeconds: f.duration, confirmedCostUsd: cost, kind: styleById($("kind").value)?.label || "", image: f.mode === "image" ? f.image : undefined }) });
     await refreshJobs();
   } catch (e) { $("genErr").textContent = e.message; }
   update();
