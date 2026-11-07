@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ai-video-studio
+    runtime: docker
+    plan: free
+    envVars:
+      - key: STUDIO_PASSWORD
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

@@ -35,3 +35,9 @@ Aucun serveur n'est joignable depuis un Artifact : seuls le scénario (Claude), 
 ```bash
 npm test    # assemblage FFmpeg réel : MP4 H.264 + AAC, sous-titres, mouvement
 ```
+
+### Héberger en ligne (sans PC allumé)
+
+Le dépôt contient un `Dockerfile` (Node, FFmpeg, eSpeak NG, edge-tts) et un `render.yaml`. Exemple avec Render : « New » puis « Blueprint », choisissez ce dépôt, renseignez `ANTHROPIC_API_KEY` (et `OPENAI_API_KEY` si vous voulez des images ou une voix payantes). Un mot de passe `STUDIO_PASSWORD` est généré : le navigateur le demande à l'ouverture de l'URL (nom d'utilisateur au choix). Définissez toujours `STUDIO_PASSWORD` sur un serveur joignable depuis Internet.
+
+Limites d'un plan gratuit : démarrage lent après inactivité, peu de CPU (le rendu d'une vidéo de 60 s peut prendre plusieurs minutes), disque éphémère (les MP4 disparaissent au redémarrage : téléchargez-les). Le Dockerfile n'a pas été construit pendant le développement, faute de démon Docker.

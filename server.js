@@ -292,8 +292,19 @@ function serveFile(req, res, file, type) {
 }
 const publicJob = j => ({ status: j.status, error: j.error, mp4: j.mp4, steps: j.steps, scenes: j.scenes });
 
+// Optional password (HTTP Basic, any user name). Set STUDIO_PASSWORD on any server reachable from the Internet.
+const sha = v => crypto.createHash('sha256').update(String(v)).digest();
+function authorized(req) {
+  if (!env.STUDIO_PASSWORD) return true;
+  const h = req.headers.authorization || '';
+  if (!h.startsWith('Basic ')) return false;
+  const given = Buffer.from(h.slice(6), 'base64').toString().split(':').slice(1).join(':');
+  return crypto.timingSafeEqual(sha(given), sha(env.STUDIO_PASSWORD));
+}
+
 const server = http.createServer(async (req, res) => {
   try {
+    if (!authorized(req)) { res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="AI Video Studio"' }); return res.end(); }
     const url = new URL(req.url, 'http://x');
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) return serveFile(req, res, path.join(__dirname, 'ai-video-studio.html'), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/status') {
