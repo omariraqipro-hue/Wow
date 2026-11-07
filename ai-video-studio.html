@@ -37,6 +37,8 @@ main{padding-top:28px}
 .pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid;white-space:nowrap}
 .pill.ok{color:var(--ok);border-color:#1f6a50;background:#0d2a21}
 .pill.no{color:var(--warn);border-color:#6b5513;background:#2a2108}
+.pill.err{color:var(--bad);border-color:#5b2227;background:#2a1114}
+.dot.err{background:var(--bad)}
 .pill.run{color:var(--accent-hi);border-color:#4a3a86;background:#1d1538}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
 .panel>h2{font-size:17px;margin-bottom:14px}
@@ -145,8 +147,8 @@ canvas{max-width:100%;max-height:62vh;border-radius:8px;background:#111;display:
         <label class="f" for="lang">Langue du récit</label>
         <select id="lang"><option value="fr-FR">Français</option><option value="en-US">English</option><option value="es-ES">Español</option><option value="ar-SA">العربية</option></select>
         <div style="margin-top:16px">
-          <div class="toggle"><div>Voix off (voix du navigateur)<small>Aperçu. La voix IA nécessite une connexion.</small></div><input type="checkbox" class="sw" id="t-voice" checked aria-label="Voix off"></div>
-          <div class="toggle"><div>Musique de fond<small>Nécessite un moteur musical, non connecté.</small></div><input type="checkbox" class="sw" id="t-music" aria-label="Musique de fond"></div>
+          <div class="toggle"><div>Voix off<small>Aperçu : voix du navigateur. Vidéo : moteur vocal choisi dans Paramètres.</small></div><input type="checkbox" class="sw" id="t-voice" checked aria-label="Voix off"></div>
+          <div class="toggle"><div>Musique de fond<small>Utilise le fichier audio MUSIC_FILE défini sur le serveur.</small></div><input type="checkbox" class="sw" id="t-music" aria-label="Musique de fond"></div>
         </div>
         <div class="row" style="margin-top:16px"><button class="btn" id="go">Générer le scénario</button><span id="goState" class="sub"></span></div>
         <div id="err" class="err" hidden></div>
@@ -168,16 +170,20 @@ canvas{max-width:100%;max-height:62vh;border-radius:8px;background:#111;display:
     <div class="stack sticky">
       <div class="panel">
         <h2>Prévisualisation</h2>
-        <div class="stage"><canvas id="cv" aria-label="Aperçu du storyboard"></canvas></div>
-        <div class="transport">
+        <div class="stage" id="stage"><canvas id="cv" aria-label="Aperçu du storyboard"></canvas></div>
+        <div class="stage" id="vstage" hidden><video id="player" controls playsinline style="max-width:100%;max-height:62vh;border-radius:8px"></video></div>
+        <div class="transport" id="transport">
           <button class="btn ghost" id="prev" aria-label="Scène précédente">⏮</button>
           <button class="btn" id="play">▶ Lecture</button>
           <button class="btn ghost" id="next" aria-label="Scène suivante">⏭</button>
         </div>
-        <p class="note">Aperçu storyboard : texte, voix et sous-titres sont réels. Les images et l'animation ne sont pas générées tant qu'aucun moteur n'est connecté.</p>
+        <p class="note">Le storyboard sert d'aperçu : voix du navigateur et sous-titres en direct, avec les images une fois générées. La vidéo finale est produite par le serveur et lue dans le lecteur.</p>
+        <p class="note" id="srv"></p>
         <div class="row" style="margin-top:12px">
           <button class="btn ghost" id="save" disabled>Enregistrer le projet</button>
-          <button class="btn" id="export" disabled title="Moteur de montage non connecté">Exporter en MP4 · connexion requise</button>
+          <button class="btn" id="make" disabled>Produire la vidéo MP4</button>
+          <a class="btn ghost" id="dl" download="ai-video-studio.mp4" hidden style="text-decoration:none">Télécharger le MP4</a>
+          <button class="btn ghost" id="back" hidden>Revoir le storyboard</button>
         </div>
       </div>
     </div>
@@ -204,7 +210,7 @@ canvas{max-width:100%;max-height:62vh;border-radius:8px;background:#111;display:
     <div class="panel">
       <h2>Moteurs de génération</h2>
       <div class="tw"><table id="provs"></table></div>
-      <p class="note">Chaque étape passe par un connecteur (<code>providers</code> dans le code) qui expose <code>generate(scène, options)</code> et renvoie une URL de média. Tant qu'un connecteur n'est pas branché, son étape est marquée « connexion requise » et rien n'est simulé. Cette page ne peut pas appeler directement une API externe : le branchement passe par un connecteur Claude ou un petit serveur relais qui garde vos clés.</p>
+      <p class="note">Les moteurs tournent sur le serveur (<code>server.js</code>), qui garde vos clés API dans ses variables d'environnement. Cette page ne contient aucune clé. Un moteur sans clé ou sans outil installé est grisé, et rien n'est simulé. Dans Claude Artifacts, aucun serveur n'est joignable : seuls le scénario et l'aperçu fonctionnent.</p>
     </div>
   </div>
 </section>
@@ -216,29 +222,31 @@ const STYLES=[["cartoon3d","Cartoon 3D","#7c3aed",270],["realiste","Réaliste","
 const FORMATS=[["9:16",9/16],["16:9",16/9],["1:1",1],["4:3",4/3]];
 const DURS=[[15,"15 s"],[30,"30 s"],[60,"60 s"],[180,"3 min"]];
 
-/* Provider registry. To plug a real engine: set connected=true and implement
-   generate(scene, opts) => Promise<{url}>. The pipeline only runs connected providers. */
-const providers={
-  image:{label:"Images par scène",connected:false,generate:null},
-  video:{label:"Animation des images",connected:false,generate:null},
-  voice:{label:"Voix off IA",connected:false,generate:null},
-  music:{label:"Musique de fond",connected:false,generate:null},
-  render:{label:"Montage et export MP4",connected:false,generate:null}
-};
-
-const CAPS=[
- ["Scénario avec Claude","ok","Fonctionne","Écriture du récit, accroche et narration."],
- ["Découpage en scènes","ok","Fonctionne","Scènes modifiables, durée par scène."],
- ["Prompts visuels par scène","ok","Fonctionne","Descriptions prêtes pour un générateur d'images."],
- ["Voix off (navigateur)","ok","Fonctionne","Dépend des voix installées sur l'appareil."],
- ["Sous-titres synchronisés","ok","Fonctionne","Mot à mot pendant la lecture du storyboard."],
- ["Projets enregistrés","ok","Fonctionne","Stockés dans ce navigateur uniquement."],
- ["Images par scène","no","Connexion requise","Générateur d'images à brancher."],
- ["Animation IA","no","Connexion requise","Moteur image-vers-vidéo à brancher."],
- ["Voix off IA","no","Connexion requise","Moteur de synthèse vocale à brancher."],
- ["Musique de fond","no","Connexion requise","Moteur musical à brancher."],
- ["Montage et export MP4","no","Connexion requise","Moteur de rendu à brancher."]
-];
+/* Production engines live on the local server (server.js). The page asks GET /api/status
+   which engines really exist; nothing is marked available unless the server says so. */
+const server={ok:false,claude:false,music:false,ffmpeg:false,engines:{image:[],video:[],voice:[]}};
+const pick={image:"",video:"",voice:""};
+const KINDS=[["image","Images par scène"],["video","Animation des scènes"],["voice","Voix off"]];
+const anyAvail=k=>server.engines[k].some(e=>e.available);
+function capState(ok,needs){return !server.ok?["no","Serveur requis"]:ok?["ok","Disponible"]:["no",needs]}
+function capsRows(){
+  const st=(ok,n)=>capState(ok,n),ai=server.engines.video.find(e=>e.id==="fal");
+  return [
+   ["Scénario avec Claude","ok","Fonctionne","Dans Claude Artifacts ou via ANTHROPIC_API_KEY sur le serveur."],
+   ["Découpage en scènes","ok","Fonctionne","Scènes modifiables, durée par scène."],
+   ["Prompts visuels par scène","ok","Fonctionne","Descriptions utilisées par le moteur d'images."],
+   ["Aperçu voix du navigateur","ok","Fonctionne","Dépend des voix installées sur l'appareil."],
+   ["Images par scène",...st(anyAvail("image"),"Clé requise"),"Pollinations gratuit ou OpenAI payant."],
+   ["Animation par mouvement de caméra",...st(server.ffmpeg,"FFmpeg manquant"),"Gratuit. Zoom et travelling sur chaque image, pas de vidéo générative."],
+   ["Animation vidéo IA",...st(!!(ai&&ai.available),"Clé requise"),"fal.ai, payant."],
+   ["Voix off dans la vidéo",...st(anyAvail("voice"),"Outil ou clé requis"),"edge-tts ou eSpeak NG gratuits, OpenAI payant."],
+   ["Sous-titres synchronisés dans la vidéo",...st(server.ffmpeg,"FFmpeg manquant"),"Mot à mot, calés sur la durée réelle de la voix."],
+   ["Musique de fond",...st(server.music,"MUSIC_FILE requis"),"Votre fichier audio libre de droits, mixé à bas volume."],
+   ["Export MP4",...st(server.ffmpeg,"FFmpeg manquant"),"H.264 et AAC, lisible sur tablette Samsung."],
+   ["Projets enregistrés","ok","Fonctionne","Stockés dans ce navigateur."]
+  ];
+}
+function renderCaps(){$("#caps").innerHTML="<tr><th>Fonction</th><th>État</th></tr>"+capsRows().map(c=>`<tr><td>${c[0]}<small>${c[3]}</small></td><td><span class="pill ${c[1]}">${c[2]}</span></td></tr>`).join("")}
 
 /* ---------- State ---------- */
 const $=s=>document.querySelector(s);
@@ -263,8 +271,34 @@ function route(){
 addEventListener("hashchange",route);
 
 /* ---------- Static renders ---------- */
-$("#caps").innerHTML="<tr><th>Fonction</th><th>État</th></tr>"+CAPS.map(c=>`<tr><td>${c[0]}<small>${c[3]}</small></td><td><span class="pill ${c[1]}">${c[2]}</span></td></tr>`).join("");
-$("#provs").innerHTML="<tr><th>Moteur</th><th>État</th></tr>"+Object.values(providers).map(p=>`<tr><td>${p.label}</td><td><span class="pill ${p.connected?"ok":"no"}">${p.connected?"Connecté":"Non connecté"}</span></td></tr>`).join("");
+function renderProvs(){
+  const row=(l,ctl,ok,txt)=>`<tr><td>${l}</td><td>${ctl}</td><td><span class="pill ${ok?"ok":"no"}">${txt}</span></td></tr>`;
+  let h="<tr><th>Étape</th><th>Moteur</th><th>État</th></tr>";
+  KINDS.forEach(([k,l])=>{
+    const list=server.engines[k];
+    const sel=list.length?`<select id="eng-${k}" data-k="${k}" aria-label="${l}">${list.map(e=>`<option value="${e.id}" ${e.id===pick[k]?"selected":""} ${e.available?"":"disabled"}>${esc(e.label)}${e.available?"":" · indisponible"}</option>`).join("")}</select>`:"—";
+    h+=row(l,sel,server.ok&&!!pick[k],server.ok?(pick[k]?"Disponible":"Rien de disponible"):"Serveur requis");
+  });
+  h+=row("Musique de fond","MUSIC_FILE (fichier audio sur le serveur)",server.music,server.ok?(server.music?"Disponible":"Non défini"):"Serveur requis");
+  h+=row("Montage MP4","FFmpeg",server.ffmpeg,server.ok?(server.ffmpeg?"Disponible":"Introuvable"):"Serveur requis");
+  h+=row("Scénario","Claude (ANTHROPIC_API_KEY)",server.claude,server.claude?"Disponible":"Via Artifacts seulement");
+  $("#provs").innerHTML=h;
+}
+$("#provs").addEventListener("change",e=>{const k=e.target.dataset.k;if(k){pick[k]=e.target.value;ls.set("avs.pick."+k,pick[k])}});
+async function loadStatus(){
+  try{
+    const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),3000);
+    const r=await fetch("/api/status",{cache:"no-store",signal:ctl.signal});clearTimeout(to);
+    if(!r.ok||!(r.headers.get("content-type")||"").includes("json"))throw 0;
+    const j=await r.json();if(!j.server)throw 0;
+    Object.assign(server,{ok:true,claude:j.claude,music:j.music,ffmpeg:j.ffmpeg,engines:j.engines});
+    KINDS.forEach(([k])=>{const saved=ls.get("avs.pick."+k);const av=j.engines[k].filter(e=>e.available);
+      pick[k]=(av.find(e=>e.id===saved)||av[0]||{id:""}).id});
+  }catch(e){server.ok=false}
+  renderCaps();renderProvs();
+  $("#srv").textContent=server.ok?"Serveur de production connecté : les vidéos MP4 sont réellement produites.":"Aucun serveur de production détecté : seuls le scénario et l'aperçu storyboard fonctionnent. Lancez server.js (voir README).";
+  $("#make").disabled=!(server.ok&&proj);
+}
 
 function chips(el,items,key,fmt){
   el.innerHTML=items.map(it=>`<button type="button" class="chip ${key==="format"?"fmt":""}" data-v="${it[0]}" aria-pressed="${opts[key]==it[0]}">${key==="format"?`<s style="width:${it[1]>=1?18:Math.round(18*it[1])}px;height:${it[1]>=1?Math.round(18/it[1]):18}px"></s>`:""}${fmt(it)}</button>`).join("");
@@ -296,38 +330,61 @@ function stepsInit(){
    {k:"script",l:"Scénario Claude",st:"todo"},
    {k:"split",l:"Découpage en scènes",st:"todo"},
    {k:"prompts",l:"Prompts visuels",st:"todo"},
-   {k:"image",l:"Images par scène",p:"image",st:"todo"},
-   {k:"video",l:"Animation des images",p:"video",st:"todo"},
-   {k:"voice",l:"Voix off IA",p:"voice",st:"todo"},
-   {k:"subs",l:"Sous-titres synchronisés",st:"todo"},
-   {k:"music",l:"Musique de fond",p:"music",st:"todo",optional:true},
-   {k:"render",l:"Montage et export MP4",p:"render",st:"todo"}
+   {k:"image",l:"Images par scène",srv:1,st:"todo"},
+   {k:"voice",l:"Voix off",srv:1,st:"todo"},
+   {k:"subs",l:"Sous-titres synchronisés",srv:1,st:"todo"},
+   {k:"video",l:"Animation des scènes",srv:1,st:"todo"},
+   {k:"music",l:"Musique de fond",srv:1,st:"todo"},
+   {k:"render",l:"Montage et export MP4",srv:1,st:"todo"}
   ];
 }
+// Server steps wait for "Produire la vidéo"; without a server they are blocked.
+function armServerSteps(){steps.filter(s=>s.srv).forEach(s=>{s.st=server.ok?"todo":"no";s.detail=""});}
 function renderSteps(){
   const done=steps.filter(s=>s.st==="ok").length, blocked=steps.filter(s=>s.st==="no").length;
   const runnable=steps.length-blocked;
   $("#bar").firstElementChild.style.width=(runnable?done/steps.length*100:0)+"%";
   $("#bar").setAttribute("aria-valuenow",Math.round(done/steps.length*100));
-  $("#barTxt").textContent=`${done} étape${done>1?"s":""} terminée${done>1?"s":""} sur ${steps.length}`+(blocked?` · ${blocked} nécessitent une connexion`:"");
-  const lab={todo:["","En attente"],run:["run","En cours"],ok:["ok","Terminé"],no:["no","Connexion requise"],skip:["","Désactivé"]};
-  $("#steps").innerHTML=steps.map(s=>{const L=lab[s.st];const extra=s.k==="voice"&&s.st==="no"&&s.browserVoice?"<small>Aperçu avec la voix du navigateur disponible</small>":"";
+  $("#barTxt").textContent=`${done} étape${done>1?"s":""} terminée${done>1?"s":""} sur ${steps.length}`+(blocked?` · ${blocked} nécessitent le serveur de production`:"");
+  const lab={todo:["","En attente"],run:["run","En cours"],ok:["ok","Terminé"],no:["no","Serveur requis"],skip:["","Désactivé"],err:["err","Échec"]};
+  $("#steps").innerHTML=steps.map(s=>{const L=lab[s.st];const extra=s.detail?`<small>${esc(s.detail)}</small>`:"";
     return `<li><span class="dot ${L[0]}"></span><span>${s.l}${extra}</span><span class="pill ${L[0]||"run"}" style="${L[0]?"":"opacity:.5"}">${L[1]}</span></li>`}).join("");
 }
 const tick=()=>new Promise(r=>setTimeout(r,120));
 async function setStep(k,st,extra){const s=steps.find(x=>x.k===k);s.st=st;Object.assign(s,extra||{});renderSteps();await tick()}
 
-async function runProviderSteps(){
-  for(const s of steps){
-    if(!s.p)continue;
-    if(s.optional&&!$("#t-music").checked){await setStep(s.k,"skip");continue}
-    const p=providers[s.p];
-    if(!p.connected||!p.generate){await setStep(s.k,"no",{browserVoice:s.k==="voice"&&tts});continue}
-    await setStep(s.k,"run");
-    try{for(const sc of proj.scenes)sc[s.p]=await p.generate(sc,opts);await setStep(s.k,"ok")}
-    catch(e){await setStep(s.k,"no");showErr(`${p.label} : ${e.message||e}`)}
-  }
+/* ---------- Real production on the server ---------- */
+const imgs={};
+function loadSceneImages(list){
+  list.forEach((s,i)=>{if(!s.image||(imgs[i]&&imgs[i].src.endsWith(s.image)))return;
+    const im=new Image();im.onload=()=>{if(!playing)draw()};im.src=s.image;imgs[i]=im});
 }
+function showPlayer(url){
+  $("#player").src=url;$("#dl").href=url;
+  $("#stage").hidden=$("#transport").hidden=true;$("#vstage").hidden=false;$("#dl").hidden=$("#back").hidden=false;
+}
+function showStoryboard(){$("#stage").hidden=$("#transport").hidden=false;$("#vstage").hidden=true;$("#dl").hidden=$("#back").hidden=true;$("#player").pause();draw()}
+$("#back").onclick=showStoryboard;
+async function startRender(){
+  showErr("");stop();showStoryboard();
+  const make=$("#make");make.disabled=true;
+  const body={project:{style:proj.style,format:proj.format,lang:proj.lang,scenes:proj.scenes.map(({narration,visual,seconds})=>({narration,visual,seconds}))},
+    opt:{image:pick.image,video:pick.video,voice:pick.voice,voiceOn:$("#t-voice").checked,music:$("#t-music").checked}};
+  try{
+    const r=await fetch("/api/render",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const j=await r.json();if(!r.ok)throw new Error(j.error||"Refusé par le serveur");
+    for(;;){
+      await new Promise(res=>setTimeout(res,1500));
+      const job=await (await fetch("/api/jobs/"+j.jobId,{cache:"no-store"})).json();
+      job.steps.forEach(s=>{const x=steps.find(y=>y.k===s.k);if(x){x.st=s.st;x.detail=s.detail}});
+      renderSteps();loadSceneImages(job.scenes);
+      if(job.status==="error")throw new Error(job.error);
+      if(job.status==="done"){proj.mp4=job.mp4;showPlayer(job.mp4);break}
+    }
+  }catch(e){showErr("Production interrompue : "+(e.message||e))}
+  finally{make.disabled=false}
+}
+$("#make").onclick=startRender;
 
 /* ---------- Scenario generation (Claude) ---------- */
 function showErr(m){const e=$("#err");e.textContent=m;e.hidden=!m}
@@ -336,8 +393,8 @@ async function generate(){
   const idea=$("#idea").value.trim();
   if(idea.length<8){showErr("Décrivez votre idée en une phrase au moins.");return}
   stop();
-  const sample=await claude.use("sample");
-  if(!sample){showErr("La génération de scénario nécessite l'accès à Claude, indisponible dans cette vue. Ouvrez l'artifact dans claude.ai.");return}
+  const sample=typeof claude!=="undefined"?await claude.use("sample"):null;
+  if(!sample&&!server.claude){showErr("Le scénario nécessite Claude : ouvrez cette page dans Claude Artifacts, ou définissez ANTHROPIC_API_KEY sur le serveur.");return}
   const go=$("#go");go.disabled=true;
   $("#pipe").hidden=false;stepsInit();renderSteps();
   const style=STYLES.find(s=>s[0]===opts.style)[1], lang=$("#lang").selectedOptions[0].textContent;
@@ -349,17 +406,22 @@ Règles : exactement ${n} scènes, durée totale proche de ${opts.dur} s, enviro
 Réponds uniquement par du JSON : {"title":"...","scenes":[{"narration":"...","visual":"description visuelle détaillée en anglais, style ${style}","seconds":nombre}]}`;
   await setStep("script","run");$("#goState").textContent="Claude écrit le scénario…";
   try{
-    const out=await sample.json(prompt,{modelTier:"default"});
+    let out;
+    if(sample)out=await sample.json(prompt,{modelTier:"default"});
+    else{
+      const r=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
+      const j=await r.json();if(!r.ok)throw new Error(j.error||"Erreur du serveur");
+      const a=j.text.indexOf("{"),b=j.text.lastIndexOf("}");out=JSON.parse(j.text.slice(a,b+1));
+    }
     if(!out||!Array.isArray(out.scenes)||!out.scenes.length)throw new Error("Réponse inattendue de Claude. Relancez la génération.");
     await setStep("script","ok");
     proj={id:"p"+Date.now(),idea,style:opts.style,format:opts.format,dur:opts.dur,lang:$("#lang").value,music:$("#t-music").checked,title:String(out.title||"Sans titre").slice(0,80),created:Date.now(),
       scenes:out.scenes.map(s=>({narration:String(s.narration||"").trim(),visual:String(s.visual||"").trim(),seconds:Math.min(30,Math.max(2,Math.round(+s.seconds)||per))}))};
-    cur=0;
+    cur=0;Object.keys(imgs).forEach(k=>delete imgs[k]);showStoryboard();
     await setStep("split","ok");renderScenes();
     await setStep("prompts","ok");
-    await setStep("subs","ok");
-    await runProviderSteps();
-    $("#save").disabled=false;$("#goState").textContent="";draw();
+    armServerSteps();renderSteps();
+    $("#save").disabled=false;$("#make").disabled=!server.ok;$("#goState").textContent="";draw();
   }catch(e){
     const s=steps.find(x=>x.st==="run");if(s){s.st="todo";renderSteps()}
     showErr(e&&e.code==="not_granted"?"Accès à Claude refusé. Autorisez-le pour générer un scénario.":e&&e.code==="rate_limited"?"Trop de demandes. Patientez un moment avant de relancer.":`Échec de la génération : ${e&&e.message||e}`);
@@ -405,10 +467,17 @@ function draw(){
   }
   const sc=proj.scenes[cur];
   cx.fillStyle="rgba(255,255,255,.07)";cx.font=`700 ${200*u}px Sora,sans-serif`;cx.textAlign="center";cx.fillText(String(cur+1),W/2,H*.42);
-  cx.fillStyle="rgba(0,0,0,.45)";const lab="IMAGE NON GÉNÉRÉE · STORYBOARD";cx.font=`600 ${9*u}px Figtree,sans-serif`;
-  const lw=cx.measureText(lab).width+16*u;cx.fillRect(W/2-lw/2,14*u,lw,22*u);cx.fillStyle="#fbbf24";cx.fillText(lab,W/2,29*u);
-  cx.fillStyle="#d8d0ee";cx.font=`italic ${13*u}px Figtree,sans-serif`;
-  wrap(sc.visual,W-60*u).slice(0,7).forEach((l,i)=>cx.fillText(l,W/2,H*.3+i*18*u));
+  const im=imgs[cur];
+  if(im&&im.complete&&im.naturalWidth){
+    const k=Math.max(W/im.naturalWidth,H/im.naturalHeight),dw=im.naturalWidth*k,dh=im.naturalHeight*k;
+    cx.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);
+    const sh=cx.createLinearGradient(0,H*.6,0,H);sh.addColorStop(0,"rgba(0,0,0,0)");sh.addColorStop(1,"rgba(0,0,0,.7)");cx.fillStyle=sh;cx.fillRect(0,H*.6,W,H*.4);
+  }else{
+    cx.fillStyle="rgba(0,0,0,.45)";const lab="IMAGE NON GÉNÉRÉE · STORYBOARD";cx.font=`600 ${9*u}px Figtree,sans-serif`;
+    const lw=cx.measureText(lab).width+16*u;cx.fillRect(W/2-lw/2,14*u,lw,22*u);cx.fillStyle="#fbbf24";cx.fillText(lab,W/2,29*u);
+    cx.fillStyle="#d8d0ee";cx.font=`italic ${13*u}px Figtree,sans-serif`;
+    wrap(sc.visual,W-60*u).slice(0,7).forEach((l,i)=>cx.fillText(l,W/2,H*.3+i*18*u));
+  }
   // subtitles
   const words=sc.narration.split(/\s+/).filter(Boolean);
   cx.font=`600 ${17*u}px Sora,sans-serif`;
@@ -480,7 +549,7 @@ function renderList(){
   const L=$("#list");
   if(!store.length){L.innerHTML='<div class="empty panel" style="grid-column:1/-1">Aucun projet enregistré. Générez un scénario dans Créer, puis enregistrez-le.</div>';return}
   L.innerHTML=store.map(p=>`<div class="panel vcard"><h3>${esc(p.title)}</h3><p>${esc(p.idea)}</p>
-   <div class="row"><span class="pill run">${STYLES.find(s=>s[0]===p.style)[1]}</span><span class="pill run">${p.format}</span><span class="pill run">${p.scenes.length} scènes</span><span class="pill no">Pas de MP4</span></div>
+   <div class="row"><span class="pill run">${STYLES.find(s=>s[0]===p.style)[1]}</span><span class="pill run">${p.format}</span><span class="pill run">${p.scenes.length} scènes</span>${p.mp4?'<span class="pill ok">MP4 produit</span>':'<span class="pill no">Pas de MP4</span>'}</div>
    <div class="row"><button class="btn" data-open="${p.id}">Ouvrir</button><button class="btn ghost" data-del="${p.id}">Supprimer</button></div></div>`).join("");
 }
 $("#list").onclick=e=>{
@@ -489,12 +558,13 @@ $("#list").onclick=e=>{
     proj=JSON.parse(JSON.stringify(p));cur=0;opts.style=p.style;opts.format=p.format;opts.dur=p.dur;
     $("#idea").value=p.idea;$("#lang").value=p.lang;
     chips($("#c-style"),STYLES,"style",i=>i[1]);chips($("#c-format"),FORMATS,"format",i=>i[0]);chips($("#c-dur"),DURS,"dur",i=>i[1]);
-    stepsInit();["script","split","prompts","subs"].forEach(k=>steps.find(s=>s.k===k).st="ok");
-    steps.filter(s=>s.p).forEach(s=>s.st=(s.optional&&!p.music)?"skip":"no");
-    $("#pipe").hidden=false;renderSteps();renderScenes();$("#save").disabled=false;location.hash="#creer"}
+    stepsInit();["script","split","prompts"].forEach(k=>steps.find(s=>s.k===k).st="ok");
+    armServerSteps();Object.keys(imgs).forEach(k=>delete imgs[k]);
+    $("#pipe").hidden=false;renderSteps();renderScenes();$("#save").disabled=false;$("#make").disabled=!server.ok;
+    if(p.mp4)showPlayer(p.mp4);else showStoryboard();
+    location.hash="#creer"}
   if(d){store=store.filter(x=>x.id!==d.dataset.del);saveStore();renderList()}
 };
 
-$("#export").title="Moteur de montage non connecté";
-route();draw();
+route();draw();loadStatus();
 </script>
