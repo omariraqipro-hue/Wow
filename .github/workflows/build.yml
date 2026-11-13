@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,3 +29,12 @@ jobs:
         with:
           name: AgentTablette-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publier l'APK (lien direct, sans compte)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk AgentTablette.apk
+          gh release create agent-tablette-v1 AgentTablette.apk --target "${{ github.ref_name }}" \
+            --title "Agent Tablette" --notes "APK pour Galaxy Tab S7" \
+            || gh release upload agent-tablette-v1 AgentTablette.apk --clobber
