@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Agent Tablette</string>
+    <string name="service_description">Permet à Agent Tablette de lire l\'écran et d\'appuyer à ta place pour réaliser les tâches que tu lui demandes.</string>
+</resources>
