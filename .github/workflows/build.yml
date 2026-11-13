@@ -38,3 +38,12 @@ jobs:
           gh release create agent-tablette-v1 AgentTablette.apk --target "${{ github.ref_name }}" \
             --title "Agent Tablette" --notes "APK pour Galaxy Tab S7" \
             || gh release upload agent-tablette-v1 AgentTablette.apk --clobber
+
+      - name: Copier l'APK sur la branche agent-tablette-apk
+        run: |
+          mkdir /tmp/apk && cp AgentTablette.apk /tmp/apk/ && cd /tmp/apk
+          git init -q -b agent-tablette-apk
+          git -c user.name=ci -c user.email=ci@localhost commit -q --allow-empty -m init
+          git add AgentTablette.apk
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "APK"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" agent-tablette-apk
