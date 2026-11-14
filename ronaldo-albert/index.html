@@ -114,36 +114,59 @@ function bubble(str, x, y, size, maxW, tailX, alpha) {
   ctx.restore();
 }
 
-// ---- Personnages stylisés (pas de ressemblance réelle) ----
-function drawKid(x, y, s, shirt, label, { run = 0, t = 0, kick = 0, face = 1, number = '' } = {}) {
+// ---- Personnages style stickman ----
+// Repère local : pieds à y=0, personnage tourné vers +x (face=-1 pour le retourner)
+function drawKid(x, y, s, color, label, { run = 0, t = 0, kick = 0, face = 1, cheer = 0, cap = false, idle = true } = {}) {
+  const ph = t * 13;
+  const bob = run ? Math.abs(Math.sin(ph)) * 8 : (idle ? Math.sin(t * 3 + x) * 2 : 0);
+  const HIP = [0, -96], NECK = [0, -168], L = 50;
+  const seg = (p, a, len) => [p[0] + Math.sin(a) * len, p[1] + Math.cos(a) * len];
+  // jambes : [cuisse, tibia] (angle 0 = vers le bas, positif = vers l'avant)
+  const legs = [0, 1].map(side => {
+    const sw = Math.sin(ph + side * Math.PI);
+    let thigh = run ? sw * 0.75 : (side ? -0.12 : 0.12);
+    let shin = thigh - (run ? Math.max(0, -Math.cos(ph + side * Math.PI)) * 1.3 : 0);
+    if (side === 0 && kick > 0) { thigh = lerp(thigh, 1.25, kick); shin = lerp(shin, 1.0, kick); }
+    const knee = seg(HIP, thigh, L), foot = seg(knee, shin, L);
+    return [HIP, knee, foot];
+  });
+  // bras : [épaule, coude, main]
+  const SH = [0, -158];
+  const arms = [0, 1].map(side => {
+    const sw = Math.sin(ph + side * Math.PI);
+    let upper = run ? -sw * 0.9 : (side ? -0.25 : 0.25);
+    let fore = upper + (run ? 1.1 : 0.15);
+    if (cheer > 0) { upper = lerp(upper, side ? -2.6 : 2.6, cheer); fore = lerp(fore, side ? -2.9 : 2.9, cheer); }
+    if (side === 1 && kick > 0) { upper = lerp(upper, -0.9, kick); fore = upper; }
+    const elbow = seg(SH, upper, 40), hand = seg(elbow, fore, 38);
+    return [SH, elbow, hand];
+  });
+  const strokeAll = (w, c) => {
+    ctx.strokeStyle = c; ctx.lineWidth = w;
+    for (const [a, b, c2] of [...legs, ...arms]) { ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.lineTo(...c2); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(...HIP); ctx.lineTo(...NECK); ctx.stroke();
+  };
   ctx.save();
-  ctx.translate(x, y); ctx.scale(s * face, s);
-  const swing = run ? Math.sin(t * 14) * 0.6 : 0;
-  ctx.lineCap = 'round';
-  // jambes
-  ctx.strokeStyle = '#2b1d14'; ctx.lineWidth = 16;
-  ctx.save(); ctx.translate(0, -70); ctx.rotate(swing + kick * -1.1);
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 70); ctx.stroke(); ctx.restore();
-  ctx.save(); ctx.translate(0, -70); ctx.rotate(-swing);
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 70); ctx.stroke(); ctx.restore();
-  // short
-  ctx.fillStyle = '#f1f1f1'; roundRect(-24, -86, 48, 30, 8); ctx.fill();
-  // bras
-  ctx.strokeStyle = '#8d5a3b'; ctx.lineWidth = 12;
-  ctx.save(); ctx.translate(0, -150); ctx.rotate(-swing * 0.8 + 0.2);
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 55); ctx.stroke(); ctx.restore();
-  // maillot
-  ctx.fillStyle = shirt; roundRect(-30, -160, 60, 80, 16); ctx.fill();
-  if (number) { ctx.save(); ctx.scale(face, 1); text(number, 0, -118, 34, WHITE, { shadow: false }); ctx.restore(); }
-  ctx.save(); ctx.translate(0, -150); ctx.rotate(swing * 0.8 - 0.2);
-  ctx.strokeStyle = '#8d5a3b'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 55); ctx.stroke(); ctx.restore();
-  // tête (silhouette simple)
-  ctx.fillStyle = '#8d5a3b'; ctx.beginPath(); ctx.arc(0, -192, 30, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#1b120c'; ctx.beginPath(); ctx.arc(0, -200, 30, Math.PI, 0); ctx.fill();
+  ctx.translate(x, y - bob * s); ctx.scale(s * face, s);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  strokeAll(20, '#0b0b0b');      // contour
+  strokeAll(11, color);          // trait coloré
+  // tête
+  const hx = 4, hy = -196;
+  ctx.fillStyle = '#0b0b0b'; ctx.beginPath(); ctx.arc(hx, hy, 30, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(hx, hy, 25, 0, Math.PI * 2); ctx.fill();
+  // œil + sourire, tournés dans le sens du regard
+  ctx.fillStyle = '#0b0b0b'; ctx.beginPath(); ctx.arc(hx + 12, hy - 5, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#0b0b0b'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(hx + 8, hy + 4, 9, 0.2, 1.3); ctx.stroke();
+  if (cap) {
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(hx, hy - 4, 28, Math.PI, 0); ctx.fill();
+    ctx.fillRect(hx, hy - 8, 44, 8);
+  }
   ctx.restore();
   if (label) {
-    ctx.save(); ctx.translate(x, y - 250 * s);
-    pill(label, 0, 0, 30 * Math.max(1, s * 0.9), 'rgba(0,0,0,.6)', WHITE, 18);
+    ctx.save(); ctx.translate(x, y - 265 * s);
+    pill(label, 0, 0, 30 * Math.max(1, s * 0.9), 'rgba(0,0,0,.65)', WHITE, 18);
     ctx.restore();
   }
 }
@@ -206,8 +229,8 @@ function sceneHook(t) {
   ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(P.x, P.y, P.w, P.h);
   const zoom = 1 + t * 0.03;
   ctx.save(); ctx.translate(540, GROUND); ctx.scale(zoom, zoom); ctx.translate(-540, -GROUND);
-  drawKid(400, GROUND + 40, 1.5, AL_COLOR, 'ALBERT', { number: '' });
-  drawKid(680, GROUND + 40, 1.5, CR_COLOR, 'CRISTIANO', { number: '7', face: -1 });
+  drawKid(400, GROUND + 40, 1.5, AL_COLOR, 'ALBERT', { t });
+  drawKid(680, GROUND + 40, 1.5, CR_COLOR, 'CRISTIANO', { t, face: -1 });
   ctx.restore();
   const p1 = prog(t, 0.2, 0.4, easeBack);
   ctx.save(); ctx.translate(540, P.y + 150); ctx.scale(p1, p1);
@@ -231,7 +254,7 @@ function sceneStreet(t) {
   const bx = dir ? lerp(cx - 40, ax + 40, ph) : lerp(ax + 40, cx - 40, ph);
   const by = GROUND + 20 - Math.sin(ph * Math.PI) * 120;
   drawKid(ax, GROUND + 40, 1.5, AL_COLOR, 'ALBERT', { kick: dir ? 0 : Math.max(0, 1 - ph * 5), t });
-  drawKid(cx, GROUND + 40, 1.5, CR_COLOR, 'CRISTIANO', { face: -1, number: '7', kick: dir ? Math.max(0, 1 - ph * 5) : 0, t });
+  drawKid(cx, GROUND + 40, 1.5, CR_COLOR, 'CRISTIANO', { face: -1, kick: dir ? Math.max(0, 1 - ph * 5) : 0, t });
   drawBall(bx, by, 18, t * 8);
   text('Tous les jours.', 540, P.y + 120, 64, WHITE, { alpha: prog(t, 6.6, 0.4) });
   ctx.restore();
@@ -241,20 +264,12 @@ function sceneScout(t) {
   const v = vis(t, 8.1, 14.8); if (v <= 0) return;
   ctx.save(); ctx.globalAlpha = v;
   drawPitch(t);
-  // recruteur : adulte avec casquette et carnet
+  // recruteur (stickman avec casquette)
   const sx = 790, sy = GROUND + 40;
-  ctx.save(); ctx.translate(sx, sy); ctx.scale(1.6, 1.6);
-  ctx.strokeStyle = '#222'; ctx.lineWidth = 14; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-10, -80); ctx.lineTo(-12, 0); ctx.moveTo(10, -80); ctx.lineTo(12, 0); ctx.stroke();
-  ctx.fillStyle = GREEN; roundRect(-32, -175, 64, 100, 16); ctx.fill();
-  ctx.fillStyle = WHITE; ctx.fillRect(-32, -150, 64, 12); ctx.fillRect(-32, -120, 64, 12);
-  ctx.fillStyle = '#c99a6e'; ctx.beginPath(); ctx.arc(0, -205, 28, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(0, -212, 29, Math.PI, 0); ctx.fill(); ctx.fillRect(-45, -214, 50, 8);
-  ctx.fillStyle = '#f5f5f5'; ctx.fillRect(-60, -140, 30, 40);
-  ctx.restore();
+  drawKid(sx, sy, 1.7, GREEN, '', { t, face: -1, cap: true });
   ctx.save(); ctx.translate(sx, sy - 400); pill('RECRUTEUR DU SPORTING', 0, 0, 28, GREEN, WHITE, 20); ctx.restore();
-  drawKid(250, GROUND + 40, 1.4, AL_COLOR, 'ALBERT', {});
-  drawKid(460, GROUND + 40, 1.4, CR_COLOR, 'CRISTIANO', { number: '7' });
+  drawKid(250, GROUND + 40, 1.4, AL_COLOR, 'ALBERT', { t });
+  drawKid(460, GROUND + 40, 1.4, CR_COLOR, 'CRISTIANO', { t });
   const b = prog(t, 10.9, 0.35, easeBack);
   bubble('Celui qui marque le plus de buts entre au centre de formation !', 500, P.y + 250, 46, 720, 200, b);
   ctx.restore();
@@ -295,7 +310,7 @@ function sceneAction(t) {
   // gardien
   const dive = prog(t, 20.3, 0.5);
   ctx.save(); ctx.translate(lerp(GOAL_X - 10, GOAL_X - 110, dive), g - dive * 40); ctx.rotate(-dive * 1.4);
-  drawKid(0, 0, 1.35, '#ff9f1c', '', {});
+  drawKid(0, 0, 1.35, '#ff9f1c', '', { t, idle: false });
   ctx.restore();
   if (t < 22) { ctx.save(); ctx.globalAlpha *= 1 - prog(t, 21, 0.5); ctx.translate(GOAL_X - 10, g - 300); pill('GARDIEN', 0, 0, 26, 'rgba(0,0,0,.6)', WHITE, 14); ctx.restore(); }
   // Albert : course avec le ballon puis dépasse le gardien
@@ -306,8 +321,8 @@ function sceneAction(t) {
   const cRun = t < 23.0 || (t > 25.6 && t < 26.0);
   const kickA = t > 23.6 && t < 24.0 ? 1 - (t - 23.6) / 0.4 : 0;
   const kickC = t > 25.9 && t < 26.3 ? 1 - (t - 25.9) / 0.4 : 0;
-  drawKid(cx, g, 1.35, CR_COLOR, 'CRISTIANO', { run: cRun, t, number: '7', kick: kickC });
-  drawKid(ax, g, 1.35, AL_COLOR, 'ALBERT', { run: aRun, t, kick: kickA, face: t > 23.2 ? -1 : 1 });
+  drawKid(cx, g, 1.35, CR_COLOR, 'CRISTIANO', { run: cRun, t, kick: kickC, cheer: prog(t, 26.6, 0.3) });
+  drawKid(ax, g, 1.35, AL_COLOR, 'ALBERT', { run: aRun, t, kick: kickA, face: t > 23.2 ? -1 : 1, cheer: prog(t, 26.9, 0.3) });
   // ballon
   let bx, by = g - 16;
   if (t < 23.6) bx = ax + 34;
@@ -354,8 +369,8 @@ function sceneWhy(t) {
   ctx.save(); ctx.globalAlpha = v;
   drawPitch(t, { night: true });
   ctx.fillStyle = 'rgba(10,20,40,.35)'; ctx.fillRect(P.x, P.y, P.w, P.h);
-  drawKid(330, GROUND + 40, 1.6, CR_COLOR, 'CRISTIANO', { number: '7' });
-  drawKid(750, GROUND + 40, 1.6, AL_COLOR, 'ALBERT', { face: -1 });
+  drawKid(330, GROUND + 40, 1.6, CR_COLOR, 'CRISTIANO', { t });
+  drawKid(750, GROUND + 40, 1.6, AL_COLOR, 'ALBERT', { t, face: -1 });
   bubble('Pourquoi ?', 330, P.y + 290, 60, 400, 0, prog(t, 29.9, 0.3, easeBack) * (1 - prog(t, 32.0, 0.25)));
   bubble('Parce que tu es meilleur que moi.', 690, P.y + 300, 54, 520, 60, prog(t, 32.2, 0.35, easeBack));
   ctx.restore();
