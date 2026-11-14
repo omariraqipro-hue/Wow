@@ -156,9 +156,10 @@ function drawKid(x, y, s, color, label, { run = 0, t = 0, kick = 0, face = 1, ch
   ctx.fillStyle = '#0b0b0b'; ctx.beginPath(); ctx.arc(hx, hy, 30, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = color; ctx.beginPath(); ctx.arc(hx, hy, 25, 0, Math.PI * 2); ctx.fill();
   // œil + sourire, tournés dans le sens du regard
-  ctx.fillStyle = '#0b0b0b'; ctx.beginPath(); ctx.arc(hx + 12, hy - 5, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0b0b0b';
+  for (const ex of [hx - 1, hx + 14]) { ctx.beginPath(); ctx.arc(ex, hy - 5, 4.5, 0, Math.PI * 2); ctx.fill(); }
   ctx.strokeStyle = '#0b0b0b'; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.arc(hx + 8, hy + 4, 9, 0.2, 1.3); ctx.stroke();
+  ctx.beginPath(); ctx.arc(hx + 6, hy + 2, 10, 0.35, 2.6); ctx.stroke();
   if (cap) {
     ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(hx, hy - 4, 28, Math.PI, 0); ctx.fill();
     ctx.fillRect(hx, hy - 8, 44, 8);
