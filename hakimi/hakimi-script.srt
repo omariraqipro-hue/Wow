@@ -1,40 +1,40 @@
 1
-00:00:00,100 --> 00:00:03,957
+00:00:00,000 --> 00:00:02,320
 Comment Hakimi est devenu l'un des meilleurs du monde ?
 
 2
-00:00:04,107 --> 00:00:09,165
+00:00:02,320 --> 00:00:05,420
 Il grandit à Getafe, près de Madrid, dans une famille marocaine.
 
 3
-00:00:09,315 --> 00:00:12,901
+00:00:06,140 --> 00:00:08,580
 Sa mère fait des ménages. Son père vend dans la rue.
 
 4
-00:00:13,051 --> 00:00:17,590
+00:00:08,960 --> 00:00:11,540
 À huit ans, il entre au centre de formation du Real Madrid.
 
 5
-00:00:17,740 --> 00:00:21,303
+00:00:12,320 --> 00:00:14,240
 Chaque jour, il travaille plus que tout le monde.
 
 6
-00:00:21,453 --> 00:00:25,258
+00:00:14,640 --> 00:00:16,720
 En 2017, il joue enfin avec les pros.
 
 7
-00:00:25,408 --> 00:00:30,472
+00:00:17,100 --> 00:00:20,420
 Puis il explose à Dortmund, et gagne le championnat d'Italie avec l'Inter.
 
 8
-00:00:30,622 --> 00:00:35,271
+00:00:21,120 --> 00:00:24,620
 En 2022, au Mondial, il tire une panenka contre l'Espagne.
 
 9
-00:00:36,021 --> 00:00:39,369
+00:00:25,240 --> 00:00:27,340
 Et après le match, il court embrasser sa mère.
 
 10
-00:00:39,519 --> 00:00:43,414
+00:00:27,760 --> 00:00:29,900
 Le travail paie toujours. Abonne-toi pour la suite !
 
