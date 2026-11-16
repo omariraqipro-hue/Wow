@@ -1,0 +1,10 @@
+{
+  "name": "ARMUP AI — Deviens plus fort, à ton rythme",
+  "short_name": "ARMUP AI",
+  "lang": "fr",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#050807",
+  "theme_color": "#050807",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
