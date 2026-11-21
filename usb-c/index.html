@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Détecteur USB-C</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: #0f1115; color: #eee; }
+  header { padding: 12px 16px; font-weight: 700; font-size: 18px; }
+  #stage { position: relative; width: 100%; max-width: 640px; margin: 0 auto; aspect-ratio: 3 / 4; background: #000; overflow: hidden; }
+  video, #overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #guide { position: absolute; left: 20%; top: 25%; width: 60%; aspect-ratio: 1; border: 3px dashed #4ade80; border-radius: 12px; pointer-events: none; }
+  #instruction { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px; text-align: center; font-size: 28px; font-weight: 800; background: linear-gradient(transparent, rgba(0,0,0,.8)); }
+  main { max-width: 640px; margin: 0 auto; padding: 12px 16px 32px; }
+  .row { display: flex; gap: 10px; margin: 10px 0; }
+  button { flex: 1; padding: 16px 10px; font-size: 16px; font-weight: 600; border: 0; border-radius: 12px; color: #fff; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+  button:disabled { opacity: .4; cursor: default; }
+  button:active:not(:disabled) { transform: scale(.97); }
+  #btnCable { background: #16a34a; }
+  #btnFond { background: #dc2626; }
+  #btnSearch { background: #2563eb; }
+  #btnCamera { background: #7c3aed; }
+  #btnReset { background: #374151; flex: 0 0 auto; }
+  p { color: #aaa; font-size: 14px; line-height: 1.4; margin: 6px 0; }
+  #status { color: #fbbf24; }
+</style>
+</head>
+<body>
+<header>🔌 Détecteur de câble USB-C</header>
+
+<div id="stage">
+  <video id="video" playsinline muted autoplay></video>
+  <canvas id="overlay"></canvas>
+  <div id="guide"></div>
+  <div id="instruction"></div>
+</div>
+
+<main>
+  <p id="status">Appuie sur le bouton pour démarrer.</p>
+  <div class="row"><button id="btnCamera">📷 Activer la caméra</button></div>
+
+  <p><b>1. Apprendre</b> — Mets le câble USB-C dans le carré vert et <b>maintiens</b> « Câble » en bougeant un peu (angles, distances). Puis vise ce qui n'est pas un câble (sol, table, mains…) et maintiens « Pas un câble ». Vise 30+ images de chaque.</p>
+  <div class="row">
+    <button id="btnCable" disabled>📸 Câble (<span id="nCable">0</span>)</button>
+    <button id="btnFond" disabled>📸 Pas un câble (<span id="nFond">0</span>)</button>
+  </div>
+
+  <p><b>2. Chercher</b> — L'IA te guide à la voix jusqu'au câble.</p>
+  <div class="row">
+    <button id="btnSearch" disabled>▶️ Chercher</button>
+    <button id="btnReset" disabled>🗑️</button>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@1.2.6/dist/knn-classifier.min.js"></script>
+<script>
+const MIN_EXAMPLES = 10;     // minimum par classe avant de pouvoir chercher
+const THRESHOLD = 0.7;       // confiance minimum pour dire "câble"
+const LOOP_MS = 350;         // intervalle entre deux analyses
+
+const $ = id => document.getElementById(id);
+const video = $('video'), overlay = $('overlay'), ctxOverlay = overlay.getContext('2d');
+const crop = document.createElement('canvas');
+crop.width = crop.height = 224;
+const ctxCrop = crop.getContext('2d', { willReadFrequently: true });
+
+let net, knn, searching = false;
+const counts = { cable: 0, fond: 0 };
+
+// --- Initialisation : caméra + modèles ---
+const CAMERA_HINTS = {
+  NotAllowedError: "accès refusé. Autorise la caméra pour ce site (icône 🔒 à côté de l'adresse, ou Réglages du téléphone > navigateur > Caméra), puis recharge.",
+  NotFoundError: "aucune caméra trouvée.",
+  NotReadableError: "la caméra est déjà utilisée par une autre appli. Ferme-la puis réessaie.",
+  OverconstrainedError: "caméra arrière indisponible.",
+  SecurityError: "bloqué par le navigateur. Ouvre le lien dans Chrome ou Safari (pas dans WhatsApp/Instagram).",
+};
+
+async function openCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw { name: 'SecurityError', message: 'getUserMedia indisponible' };
+  }
+  try {
+    return await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+  } catch (e) {
+    if (e.name === 'NotAllowedError' || e.name === 'SecurityError') throw e;
+    return await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); // n'importe quelle caméra
+  }
+}
+
+async function init() {
+  $('btnCamera').disabled = true;
+  $('status').textContent = "Ouverture de la caméra…";
+  try {
+    video.srcObject = await openCamera();
+  } catch (e) {
+    $('status').textContent = "Caméra inaccessible : " + (CAMERA_HINTS[e.name] || (e.name + " — " + e.message));
+    $('btnCamera').disabled = false;
+    return;
+  }
+  try { await video.play(); } catch (e) { /* autoplay muet : la vidéo démarre quand même */ }
+  $('btnCamera').style.display = 'none';
+  $('status').textContent = "Chargement de l'IA…";
+  try {
+    net = await mobilenet.load({ version: 2, alpha: 0.5 });
+    knn = knnClassifier.create();
+  } catch (e) {
+    $('status').textContent = "Impossible de charger l'IA : " + e.message;
+    return;
+  }
+  $('status').textContent = "Prêt. Commence par l'étape 1.";
+  $('btnCable').disabled = $('btnFond').disabled = $('btnReset').disabled = false;
+}
+
+// Copie une zone de la vidéo (coordonnées 0..1, carré dans l'image affichée) dans le canvas 224x224.
+// La vidéo est en object-fit: cover, on calcule donc la partie réellement visible.
+function grab(x, y, size) {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const sw = overlay.clientWidth, sh = overlay.clientHeight;
+  const scale = Math.max(sw / vw, sh / vh);
+  const visW = sw / scale, visH = sh / scale;
+  const offX = (vw - visW) / 2, offY = (vh - visH) / 2;
+  const side = size * Math.min(visW, visH);
+  ctxCrop.drawImage(video, offX + x * visW, offY + y * visH, side, side, 0, 0, 224, 224);
+  return { x, y, w: side / visW, h: side / visH };
+}
+
+function embed() {
+  return tf.tidy(() => net.infer(crop, true));
+}
+
+// Probabilité que la zone actuelle du canvas soit un câble
+async function cableProb() {
+  const emb = embed();
+  const res = await knn.predictClass(emb, 5);
+  emb.dispose();
+  return res.confidences['cable'] || 0;
+}
+
+// --- Étape 1 : apprentissage (maintenir le bouton) ---
+function holdToCapture(btn, label) {
+  let timer = null;
+  const add = () => {
+    // Zone du carré vert : left 20%, top 25%, largeur 60% de la largeur affichée
+    const sw = overlay.clientWidth, sh = overlay.clientHeight;
+    grab(0.2, 0.25, 0.6 * sw / Math.min(sw, sh));
+    const emb = embed();
+    knn.addExample(emb, label);
+    emb.dispose();
+    counts[label]++;
+    $('nCable').textContent = counts.cable;
+    $('nFond').textContent = counts.fond;
+    $('btnSearch').disabled = !(counts.cable >= MIN_EXAMPLES && counts.fond >= MIN_EXAMPLES);
+  };
+  const stop = () => { clearInterval(timer); timer = null; };
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (btn.disabled || searching) return;
+    add();
+    timer = setInterval(add, 120);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+}
+holdToCapture($('btnCable'), 'cable');
+holdToCapture($('btnFond'), 'fond');
+
+$('btnReset').addEventListener('click', () => {
+  stopSearch();
+  knn.clearAllClasses();
+  counts.cable = counts.fond = 0;
+  $('nCable').textContent = $('nFond').textContent = 0;
+  $('btnSearch').disabled = true;
+});
+
+// --- Étape 2 : recherche guidée ---
+let lastSpoken = '', lastSpokenAt = 0, candidate = '', candidateCount = 0;
+
+function say(text) {
+  $('instruction').textContent = text;
+  const now = Date.now();
+  // On parle si l'instruction change, ou on la répète toutes les 3 s
+  if (text === lastSpoken && now - lastSpokenAt < 3000) return;
+  lastSpoken = text; lastSpokenAt = now;
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'fr-FR';
+  u.rate = 1.1;
+  speechSynthesis.speak(u);
+}
+
+function drawBox(box, color) {
+  ctxOverlay.clearRect(0, 0, overlay.width, overlay.height);
+  if (!box) return;
+  ctxOverlay.strokeStyle = color;
+  ctxOverlay.lineWidth = 6;
+  ctxOverlay.strokeRect(box.x * overlay.width, box.y * overlay.height, box.w * overlay.width, box.h * overlay.height);
+}
+
+async function analyse() {
+  // Vue globale : le câble remplit-il l'écran (= il est tout proche) ?
+  const fh = Math.min(overlay.clientWidth, overlay.clientHeight) / overlay.clientHeight;
+  const fullBox = grab(0, (1 - fh) / 2, 1);
+  const fullProb = await cableProb();
+
+  // Grille 3x3 de zones qui se chevauchent : où est le câble ?
+  let best = { prob: 0 };
+  const sw = overlay.clientWidth, sh = overlay.clientHeight;
+  const cell = 0.5;                                   // zone = moitié du petit côté
+  const cw = cell * Math.min(sw, sh) / sw, ch = cell * Math.min(sw, sh) / sh;
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const box = grab(c * (1 - cw) / 2, r * (1 - ch) / 2, cell);
+      const prob = await cableProb();
+      if (prob > best.prob) best = { prob, r, c, box };
+    }
+  }
+
+  let text, box = null, color = '#4ade80';
+  if (fullProb >= THRESHOLD && (best.prob < THRESHOLD || (best.r === 1 && best.c === 1))) {
+    text = 'Trouvé ! Il est juste devant toi'; box = fullBox;
+  } else if (best.prob >= THRESHOLD) {
+    box = best.box; color = '#fbbf24';
+    if (best.c === 0) text = 'Tourne à gauche';
+    else if (best.c === 2) text = 'Tourne à droite';
+    else if (best.r === 0) text = 'Lève un peu';
+    else if (best.r === 2) text = 'Avance, il est en bas';
+    else text = 'Avance';
+  } else {
+    text = 'Tourne doucement pour chercher';
+  }
+  return { text, box, color };
+}
+
+async function loop() {
+  if (!searching) return;
+  const t0 = Date.now();
+  overlay.width = overlay.clientWidth;
+  overlay.height = overlay.clientHeight;
+  const { text, box, color } = await analyse();
+  if (!searching) return;
+  drawBox(box, color);
+  // Anti-clignotement : une instruction doit sortir 2 fois de suite
+  if (text === candidate) candidateCount++; else { candidate = text; candidateCount = 1; }
+  if (candidateCount >= 2) say(text);
+  setTimeout(loop, Math.max(0, LOOP_MS - (Date.now() - t0)));
+}
+
+function stopSearch() {
+  searching = false;
+  $('btnSearch').textContent = '▶️ Chercher';
+  $('instruction').textContent = '';
+  $('guide').style.display = '';
+  drawBox(null);
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+}
+
+$('btnSearch').addEventListener('click', () => {
+  if (searching) return stopSearch();
+  searching = true;
+  lastSpoken = ''; candidate = ''; candidateCount = 0;
+  $('btnSearch').textContent = '⏹️ Arrêter';
+  $('guide').style.display = 'none';
+  say('C\'est parti');
+  loop();
+});
+
+$('btnCamera').addEventListener('click', init);
+</script>
+</body>
+</html>
