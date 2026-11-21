@@ -196,6 +196,12 @@ function openSheet(html, onMount) {
   $('.sheet', $('#sheet')).scrollTop = 0;
   if (onMount) onMount($('#sheetBody'));
 }
+// Confirmation intégrée (les boîtes confirm() du navigateur peuvent être bloquées).
+function askConfirm(title, text, yesLabel, onYes) {
+  openSheet(`<h2>${esc(title)}</h2><p class="muted" style="margin-top:8px">${esc(text)}</p>
+    <div class="btn-row"><button class="btn ghost" data-close>Annuler</button><button class="btn" id="confirmYes">${esc(yesLabel)}</button></div>`,
+  (body) => $('#confirmYes', body).addEventListener('click', () => { closeSheet(); onYes(); }));
+}
 function closeSheet() { $('#sheet').hidden = true; $('#sheetBody').innerHTML = ''; }
 
 const badgeHtml = (b) => `<div class="badge ${state.badges[b.id] ? 'on' : ''}" title="${esc(b.desc)}"><div class="medal">${b.emoji}</div>${esc(b.name)}</div>`;
@@ -888,7 +894,7 @@ document.addEventListener('click', (e) => {
   else if (d.tip) $('#chartTip').textContent = d.tip;
   else if (d.ask) ask(d.ask);
   else if ('close' in d) closeSheet();
-  else if ('quit' in d) { if (confirm('Quitter la séance ? Elle ne sera pas enregistrée.')) closePlayer(); }
+  else if ('quit' in d) askConfirm('Quitter la séance ?', 'Elle ne sera pas enregistrée.', 'Quitter', closePlayer);
   else if (t.id === 'addGoal') {
     const exId = $('#goalEx').value;
     const ex = EXERCISES[exId];
@@ -898,7 +904,7 @@ document.addEventListener('click', (e) => {
     state.goals.push({ id: 'g' + Date.now(), exId, target });
     save(); checkBadges(); renderProgress();
   } else if (t.id === 'resetData') {
-    if (confirm('Effacer toutes tes séances, badges et objectifs ? Cette action est définitive.')) { localStorage.removeItem(STORE_KEY); state = defaultState(); save(); showView('home'); toast('Données réinitialisées.'); }
+    askConfirm('Effacer toutes tes données ?', 'Tes séances, badges et objectifs seront supprimés définitivement.', 'Tout effacer', () => { state = defaultState(); save(); showView('home'); toast('Données réinitialisées.'); });
   }
 });
 
