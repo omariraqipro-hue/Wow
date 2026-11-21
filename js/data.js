@@ -313,19 +313,19 @@ const REST_DAYS = 2; // séance possible au plus tôt 2 jours après la précéd
 const MAX_STRENGTH_PER_WEEK = 3;
 
 const BADGES = [
-  { id: 'first', emoji: '🚀', name: 'Premier pas', desc: 'Termine ta première séance.' },
-  { id: 's5', emoji: '🔥', name: 'Lancé', desc: 'Termine 5 séances.' },
-  { id: 's15', emoji: '⚡', name: 'Motivé', desc: 'Termine 15 séances.' },
-  { id: 's30', emoji: '🏆', name: 'Pilier', desc: 'Termine 30 séances.' },
-  { id: 'week2', emoji: '📅', name: 'Régulier', desc: '2 semaines de suite avec au moins 2 séances.' },
-  { id: 'week4', emoji: '🗓️', name: 'Ultra régulier', desc: '4 semaines de suite avec au moins 2 séances.' },
-  { id: 'learn5', emoji: '🎓', name: 'Élève appliqué', desc: 'Apprends 5 exercices.' },
-  { id: 'learnAll', emoji: '🧠', name: 'Encyclopédie', desc: 'Apprends tous les exercices de niveau 1.' },
-  { id: 'tech', emoji: '🎯', name: 'Technicien', desc: 'Atteins 80 % de technique sur un exercice.' },
-  { id: 'recovery', emoji: '😴', name: 'Pro de la récup', desc: 'Respecte 5 fois un vrai jour de repos entre deux séances.' },
-  { id: 'water', emoji: '💧', name: 'Bien hydraté', desc: 'Atteins ton objectif d’eau 3 jours.' },
-  { id: 'goal', emoji: '🥇', name: 'Objectif atteint', desc: 'Réalise un de tes objectifs de force.' },
-  { id: 'listen', emoji: '👂', name: 'À l’écoute', desc: 'Choisis une séance douce ou du repos quand tu es fatigué.' }
+  { id: 'first', code: '1', emoji: '🚀', name: 'Premier pas', desc: 'Termine ta première séance.' },
+  { id: 's5', code: '5', emoji: '🔥', name: 'Lancé', desc: 'Termine 5 séances.' },
+  { id: 's15', code: '15', emoji: '⚡', name: 'Motivé', desc: 'Termine 15 séances.' },
+  { id: 's30', code: '30', emoji: '🏆', name: 'Pilier', desc: 'Termine 30 séances.' },
+  { id: 'week2', code: '2S', emoji: '📅', name: 'Régulier', desc: '2 semaines de suite avec au moins 2 séances.' },
+  { id: 'week4', code: '4S', emoji: '🗓️', name: 'Ultra régulier', desc: '4 semaines de suite avec au moins 2 séances.' },
+  { id: 'learn5', code: '5E', emoji: '🎓', name: 'Élève appliqué', desc: 'Apprends 5 exercices.' },
+  { id: 'learnAll', code: '11E', emoji: '🧠', name: 'Encyclopédie', desc: 'Apprends tous les exercices de niveau 1.' },
+  { id: 'tech', code: '80%', emoji: '🎯', name: 'Technicien', desc: 'Atteins 80 % de technique sur un exercice.' },
+  { id: 'recovery', code: 'REC', emoji: '😴', name: 'Pro de la récup', desc: 'Respecte 5 fois un vrai jour de repos entre deux séances.' },
+  { id: 'water', code: 'H₂O', emoji: '💧', name: 'Bien hydraté', desc: 'Atteins ton objectif d’eau 3 jours.' },
+  { id: 'goal', code: 'OBJ', emoji: '🥇', name: 'Objectif atteint', desc: 'Réalise un de tes objectifs de force.' },
+  { id: 'listen', code: 'ZEN', emoji: '👂', name: 'À l’écoute', desc: 'Choisis une séance douce ou du repos quand tu es fatigué.' }
 ];
 
 // Récompenses virtuelles basées uniquement sur l'effort et la régularité.

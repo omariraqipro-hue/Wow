@@ -3,20 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#050807">
+  <meta name="theme-color" content="#0b0c0b">
   <meta name="description" content="ARMUP AI — Deviens plus fort, à ton rythme. Coach de renforcement du haut du corps pour ados débutants, sans matériel.">
   <title>ARMUP AI</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,800;1,800&family=Barlow:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
-      <span class="brand-logo">💪</span>
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
       <div>
-        <div class="brand-name">ARMUP <span>AI</span></div>
-        <div class="brand-tag">Deviens plus fort, à ton rythme.</div>
+        <div class="brand-name">ARMUP<span>AI</span></div>
+        <div class="brand-tag">Deviens plus fort, à ton rythme</div>
       </div>
     </div>
     <button class="rank-chip" id="rankChip" data-view="progress" aria-label="Voir ma progression"></button>
@@ -31,15 +34,15 @@
   </main>
 
   <button class="ai-fab" id="aiFab" aria-label="Ouvrir l’assistant ARMUP AI">
-    <span>🤖</span><b>Coach IA</b>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8M8 13h5"/></svg><b>Coach IA</b>
   </button>
 
   <nav class="bottom-nav" aria-label="Navigation principale">
-    <button data-view="home" class="active"><span>🏠</span>Accueil</button>
-    <button data-view="coach"><span>💪</span>Coach</button>
-    <button data-view="plan"><span>📅</span>Programme</button>
-    <button data-view="food"><span>🥗</span>Nutrition</button>
-    <button data-view="progress"><span>📊</span>Progrès</button>
+    <button data-view="home" class="active"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Accueil</button>
+    <button data-view="coach"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>Coach</button>
+    <button data-view="plan"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Programme</button>
+    <button data-view="food"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16a8 8 0 0 1-16 0z"/><path d="M12 12c0-4 2-7 5-8M9 12c-1-3 0-5 2-6"/></svg>Nutrition</button>
+    <button data-view="progress"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Progrès</button>
   </nav>
 
   <!-- Panneau modal générique (détails exercice, bilan, etc.) -->

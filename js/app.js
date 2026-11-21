@@ -178,7 +178,7 @@ function refresh() { RENDER[currentView](); renderRank(); }
 
 function renderRank() {
   const r = rankOf(state.xp);
-  $('#rankChip').textContent = `${r.emoji} ${r.name} · ${state.xp} XP`;
+  $('#rankChip').textContent = `${r.name} · ${state.xp} XP`;
 }
 
 let toastTimer;
@@ -204,7 +204,7 @@ function askConfirm(title, text, yesLabel, onYes) {
 }
 function closeSheet() { $('#sheet').hidden = true; $('#sheetBody').innerHTML = ''; }
 
-const badgeHtml = (b) => `<div class="badge ${state.badges[b.id] ? 'on' : ''}" title="${esc(b.desc)}"><div class="medal">${b.emoji}</div>${esc(b.name)}</div>`;
+const badgeHtml = (b) => `<div class="badge ${state.badges[b.id] ? 'on' : ''}" title="${esc(b.desc)}"><div class="medal">${b.code}</div>${esc(b.name)}</div>`;
 
 // ---------- Accueil ----------
 let homeFigure = null;
@@ -214,26 +214,26 @@ function todayCardHtml() {
   const t = todayPlan();
   if (t.kind === 'strength' || t.kind === 'catchup') {
     const w = WORKOUTS[t.type];
-    const chips = workoutItems(t.type).filter((it) => RATED(it.id)).map((it) => `<span class="pill grey">${EXERCISES[it.id].emoji} ${esc(EXERCISES[it.id].name)}</span>`).join('');
-    return `<span class="pill">${t.kind === 'catchup' ? '🔁 Rattrapage possible' : '🎯 Programme du jour'}</span>
+    const chips = workoutItems(t.type).filter((it) => RATED(it.id)).map((it) => `<span class="pill grey">${esc(EXERCISES[it.id].name)}</span>`).join('');
+    return `<span class="pill">${t.kind === 'catchup' ? 'Rattrapage possible' : 'Programme du jour'}</span>
       <h1>${esc(w.short)}</h1>
       <p>≈ ${estimateMinutes(t.type)} min · ${workoutItems(t.type).length} exercices · sans matériel</p>
       <button class="btn" data-start="${t.type}">▶ Commencer</button>`;
   }
   if (t.kind === 'done') {
-    return `<span class="pill">✅ Séance terminée</span><h1>Bravo !</h1>
+    return `<span class="pill">Séance terminée</span><h1>Bravo !</h1>
       <p>Tu as fait « ${esc(WORKOUTS[t.session.workout].short)} » aujourd’hui. Place à la récupération : mange bien, bois de l’eau et dors 8–10 h.</p>`;
   }
   if (t.kind === 'blocked') {
     const txt = t.status.reason === 'recovery'
       ? `Tes muscles récupèrent : un jour de repos entre deux séances. Ta prochaine séance sera disponible ${t.status.when}.`
       : 'Tu as fait toutes tes séances de la semaine. Super régularité !';
-    return `<span class="pill warn">⏳ Récupération</span><h1>Repos mérité</h1><p>${txt}</p>
-      <button class="btn ghost small" data-start="M">🧘 Mobilité douce</button>`;
+    return `<span class="pill warn">Récupération</span><h1>Repos mérité</h1><p>${txt}</p>
+      <button class="btn ghost small" data-start="M">Mobilité douce</button>`;
   }
-  return `<span class="pill grey">😴 Jour de repos</span><h1>Récupération</h1>
+  return `<span class="pill grey">Jour de repos</span><h1>Récupération</h1>
     <p>Les muscles se renforcent pendant le repos. Option : 5 min de mobilité douce.</p>
-    <button class="btn ghost small" data-start="M">🧘 Mobilité douce</button>`;
+    <button class="btn ghost small" data-start="M">Mobilité douce</button>`;
 }
 
 function weekStripHtml() {
@@ -243,7 +243,7 @@ function weekStripHtml() {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
     const done = state.sessions.some((s) => dayKey(new Date(s.date)) === dayKey(d));
     const today = dayKey(d) === dayKey();
-    const icon = done ? '✓' : p === 'R' ? '·' : p === 'M' ? '🧘' : p;
+    const icon = done ? '✓' : p === 'R' ? '·' : p === 'M' ? 'M' : p;
     return `<div class="day-dot ${done ? 'done' : ''} ${today ? 'today' : ''} ${p === 'R' ? 'rest' : ''}">${DAY_SHORT[i]}<i>${icon}</i></div>`;
   }).join('');
 }
@@ -269,7 +269,7 @@ function monthHtml() {
   const label = first.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   return `<div class="month-head"><button data-cal="-1" aria-label="Mois précédent">‹</button><h3 style="text-transform:capitalize">${label}</h3><button data-cal="1" aria-label="Mois suivant">›</button></div>
     <div class="month">${cells}</div>
-    <div class="legend"><span><i style="background:var(--green)"></i>Séance faite</span><span><i style="background:rgba(57,255,136,.25)"></i>Mobilité</span><span><i style="background:#3d5a4a;border-radius:50%"></i>Prévue</span></div>`;
+    <div class="legend"><span><i style="background:var(--green)"></i>Séance faite</span><span><i style="background:var(--green-soft)"></i>Mobilité</span><span><i style="background:var(--muted);border-radius:50%"></i>Prévue</span></div>`;
 }
 
 function renderHome() {
@@ -287,15 +287,15 @@ function renderHome() {
     </div>
 
     <div class="grid-3" style="margin-top:12px">
-      <div class="card stat"><div class="ico">🏋️</div><b>${total}</b><span>séances terminées</span></div>
-      <div class="card stat"><div class="ico">🔥</div><b>${weekStreak()}</b><span>semaines régulières</span></div>
-      <div class="card stat"><div class="ico">🏅</div><b>${nbBadges}</b><span>badges</span></div>
+      <div class="card stat"><b>${total}</b><span>séances terminées</span></div>
+      <div class="card stat"><b>${weekStreak()}</b><span>semaines régulières</span></div>
+      <div class="card stat"><b>${nbBadges}</b><span>badges</span></div>
     </div>
 
     <div class="section-title"><h2>Mon temps de récupération</h2></div>
     <div class="card recovery">
       <div class="ring" style="--p:${rec.pct}"><div><b>${rec.label}</b><small>${rec.pct}%</small></div></div>
-      <div><h3>${rec.pct >= 100 ? 'Muscles prêts 💚' : 'Récupération en cours'}</h3><p class="muted" style="font-size:13px;margin-top:4px">${rec.text}</p></div>
+      <div><h3>${rec.pct >= 100 ? 'Muscles prêts ' : 'Récupération en cours'}</h3><p class="muted" style="font-size:13px;margin-top:4px">${rec.text}</p></div>
     </div>
 
     <div class="section-title"><h2>Ma semaine</h2><button data-go="plan">Programme ›</button></div>
@@ -304,7 +304,7 @@ function renderHome() {
     <div class="section-title"><h2>Mes exercices</h2><button data-go="coach">Tout voir ›</button></div>
     <div class="hscroll">
       ${Object.entries(EXERCISES).filter(([id]) => isUnlocked(id)).map(([id, ex]) => `
-        <button class="card tap ex-card" data-ex="${id}"><span class="emo">${ex.emoji}</span><b>${esc(ex.name)}</b><small>${esc(ex.muscles.slice(0, 2).join(' · '))}</small></button>`).join('')}
+        <button class="card tap ex-card" data-ex="${id}"><small class="tag">${esc(ex.muscles[0])}</small><b>${esc(ex.name)}</b><small>${esc(ex.muscles.slice(1, 3).join(' · '))}</small></button>`).join('')}
     </div>
 
     <div class="section-title"><h2>Mon calendrier</h2></div>
@@ -322,11 +322,11 @@ function renderCoach() {
   const t = todayPlan();
   let cta;
   if (t.kind === 'strength' || t.kind === 'catchup') cta = `<button class="btn block" data-checkin="${t.type}">▶ Commencer : ${esc(WORKOUTS[t.type].short)}</button>`;
-  else if (t.kind === 'done') cta = `<p class="muted">Séance du jour terminée ✅ Une seule séance par jour suffit : reviens après ta récupération.</p>`;
-  else cta = `<p class="muted" style="margin-bottom:10px">${t.kind === 'blocked' && t.status.reason === 'recovery' ? `Récupération en cours : prochaine séance ${t.status.when}.` : 'Aujourd’hui, c’est récupération.'} Tu peux faire de la mobilité douce.</p><button class="btn ghost block" data-start="M">🧘 Mobilité douce (5 min)</button>`;
+  else if (t.kind === 'done') cta = `<p class="muted">Séance du jour terminée Une seule séance par jour suffit : reviens après ta récupération.</p>`;
+  else cta = `<p class="muted" style="margin-bottom:10px">${t.kind === 'blocked' && t.status.reason === 'recovery' ? `Récupération en cours : prochaine séance ${t.status.when}.` : 'Aujourd’hui, c’est récupération.'} Tu peux faire de la mobilité douce.</p><button class="btn ghost block" data-start="M">Mobilité douce (5 min)</button>`;
   el.innerHTML = `
     <div class="card glow">
-      <div class="card-row"><div style="font-size:36px">🤖</div><div><h2>Ton coach sportif</h2><p class="muted" style="font-size:13px">Il adapte la séance à ta forme du jour et augmente la difficulté doucement.</p></div></div>
+      <div class="card-row"><div><h2>Ton coach sportif</h2><p class="muted" style="font-size:13px">Il adapte la séance à ta forme du jour et augmente la difficulté doucement.</p></div></div>
       <div style="margin-top:14px">${cta}</div>
     </div>
 
@@ -336,8 +336,8 @@ function renderCoach() {
         const locked = !isUnlocked(id);
         const tech = techniqueOf(id);
         return `<button class="card tap ex-tile ${locked ? 'locked' : ''}" data-ex="${id}">
-          ${locked ? '<span class="lock">🔒</span>' : isLearned(id) ? '<span class="learned" title="Appris">✓</span>' : ''}
-          <span class="emo">${ex.emoji}</span><b>${esc(ex.name)}</b>
+          ${locked ? '<span class="lock"></span>' : isLearned(id) ? '<span class="learned" title="Appris">✓</span>' : ''}
+          <small class="tag">${esc(ex.muscles[0])}</small><b>${esc(ex.name)}</b>
           <small>${locked ? 'Niveau 2' : `${levelOf(id)} ${ex.type === 'time' ? 's' : ex.unit ? ex.unit.split(' ')[0] : 'rép.'}${tech !== null ? ` · technique ${tech}%` : ''}`}</small>
         </button>`;
       }).join('')}
@@ -346,12 +346,12 @@ function renderCoach() {
     <div class="section-title"><h2>Les règles d’or du coach</h2></div>
     <div class="card">
       <ul class="rules">
-        <li>🎯 La <b>technique</b> avant la quantité.</li>
-        <li>🚫 Jamais de charges lourdes ni d’effort maximal.</li>
-        <li>🛑 Une douleur = on arrête et on prévient un adulte.</li>
-        <li>😴 Au moins un jour de repos entre deux séances.</li>
-        <li>💧 De l’eau avant, pendant et après.</li>
-        <li>📈 On progresse petit à petit : +1 ou +2 répétitions à la fois.</li>
+        <li>La <b>technique</b> avant la quantité.</li>
+        <li>Jamais de charges lourdes ni d’effort maximal.</li>
+        <li>Une douleur = on arrête et on prévient un adulte.</li>
+        <li>Au moins un jour de repos entre deux séances.</li>
+        <li>De l’eau avant, pendant et après.</li>
+        <li>On progresse petit à petit : +1 ou +2 répétitions à la fois.</li>
       </ul>
     </div>
   `;
@@ -363,12 +363,12 @@ function openExercise(id) {
   const tech = techniqueOf(id);
   const u = ex.unlock;
   openSheet(`
-    <h2>${ex.emoji} ${esc(ex.name)}</h2>
+    <h2>${esc(ex.name)}</h2>
     <div class="chips" style="margin:8px 0 12px">${ex.muscles.map((m) => `<span class="pill">${esc(m)}</span>`).join('')}</div>
     <div class="detail-stage" id="detailStage"></div>
     <div class="cue" id="detailCue"></div>
     <div class="drag-hint">↔ Fais glisser le personnage pour le faire tourner</div>
-    ${locked ? `<div class="info">🔒 Débloqué quand tu réussis ${u.reps} ${esc(EXERCISES[u.exercise].name.toLowerCase())} avec au moins ${u.technique}% de technique. Actuellement : ${levelOf(u.exercise)} rép., technique ${techniqueOf(u.exercise) ?? 0}%.</div>` : ''}
+    ${locked ? `<div class="info">Débloqué quand tu réussis ${u.reps} ${esc(EXERCISES[u.exercise].name.toLowerCase())} avec au moins ${u.technique}% de technique. Actuellement : ${levelOf(u.exercise)} rép., technique ${techniqueOf(u.exercise) ?? 0}%.</div>` : ''}
     <p style="margin-top:12px">${esc(ex.summary)}</p>
     <div class="grid-3" style="margin-top:12px">
       <div class="card stat"><b>${levelOf(id)}</b><span>${esc(unitOf(ex))}</span></div>
@@ -379,8 +379,8 @@ function openExercise(id) {
     <ol class="steps">${ex.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
     <div class="section-title"><h2>Corriger ma posture</h2></div>
     <p class="muted" style="font-size:13px">Touche ce que tu ressens ou remarques :</p>
-    <div class="fix-list">${ex.mistakes.map((m) => `<button class="fix-btn">${esc(m.label)}<div class="fix">👉 ${esc(m.fix)}</div></button>`).join('')}</div>
-    <div class="safety">⚠️ Arrête immédiatement en cas de douleur (articulation, poignet, épaule, dos) et parles-en à un adulte. Une fatigue musculaire légère est normale, une douleur ne l’est pas.</div>
+    <div class="fix-list">${ex.mistakes.map((m) => `<button class="fix-btn">${esc(m.label)}<div class="fix">${esc(m.fix)}</div></button>`).join('')}</div>
+    <div class="safety">Arrête immédiatement en cas de douleur (articulation, poignet, épaule, dos) et parles-en à un adulte. Une fatigue musculaire légère est normale, une douleur ne l’est pas.</div>
   `, (body) => {
     const fig = new Figure($('#detailStage', body), ex.anim, { yaw: -32, onCue: (c) => { const el = $('#detailCue'); if (el) el.textContent = c; } });
     $$('.fix-btn', body).forEach((b) => b.addEventListener('click', () => b.classList.toggle('open')));
@@ -394,11 +394,11 @@ function openCheckin(type) {
     <h2>Comment te sens-tu aujourd’hui ?</h2>
     <p class="muted" style="margin-top:6px">Sois honnête : le coach adapte ta séance.</p>
     <div class="feel-grid">
-      <button class="feel" data-feel="great"><span>😀</span><div><b>En pleine forme</b><small>Séance normale</small></div></button>
-      <button class="feel" data-feel="ok"><span>😐</span><div><b>Un peu fatigué</b><small>Séance allégée (moins de séries)</small></div></button>
-      <button class="feel" data-feel="sore"><span>😣</span><div><b>Grosses courbatures</b><small>Mobilité douce à la place</small></div></button>
-      <button class="feel" data-feel="tired"><span>😴</span><div><b>Très fatigué / mal dormi</b><small>Repos ou mobilité douce</small></div></button>
-      <button class="feel" data-feel="pain"><span>🤕</span><div><b>J’ai mal quelque part</b><small>Pas d’entraînement aujourd’hui</small></div></button>
+      <button class="feel" data-feel="great"><div><b>En pleine forme</b><small>Séance normale</small></div></button>
+      <button class="feel" data-feel="ok"><div><b>Un peu fatigué</b><small>Séance allégée (moins de séries)</small></div></button>
+      <button class="feel" data-feel="sore"><div><b>Grosses courbatures</b><small>Mobilité douce à la place</small></div></button>
+      <button class="feel" data-feel="tired"><div><b>Très fatigué / mal dormi</b><small>Repos ou mobilité douce</small></div></button>
+      <button class="feel" data-feel="pain"><div><b>J’ai mal quelque part</b><small>Pas d’entraînement aujourd’hui</small></div></button>
     </div>
   `, (body) => {
     $$('[data-feel]', body).forEach((b) => b.addEventListener('click', () => {
@@ -408,21 +408,21 @@ function openCheckin(type) {
       state.listenCount++;
       const fresh = checkBadges();
       if (f === 'pain') {
-        openSheet(`<div class="celebrate">🛑</div><h2 style="text-align:center">Pas d’entraînement aujourd’hui</h2>
+        openSheet(`<div class="celebrate">Stop</div><h2 style="text-align:center">Pas d’entraînement aujourd’hui</h2>
           <ul class="tips" style="margin-top:14px">
             <li>Repose la zone douloureuse.</li>
             <li>Préviens un parent ou un adulte de confiance.</li>
             <li>Si la douleur dure plus de 2–3 jours, gonfle ou te gêne pour bouger : consulte un médecin.</li>
             <li>Tu reprendras avec une version plus facile quand tu n’auras plus mal.</li>
           </ul>
-          <div class="info">👂 Écouter son corps, c’est ce que font les vrais sportifs.</div>
+          <div class="info">Écouter son corps, c’est ce que font les vrais sportifs.</div>
           <button class="btn block" style="margin-top:14px" data-close>Compris</button>`);
       } else {
-        openSheet(`<div class="celebrate">🧘</div><h2 style="text-align:center">Bonne décision !</h2>
+        openSheet(`<div class="celebrate">Repos</div><h2 style="text-align:center">Bonne décision !</h2>
           <p class="muted" style="text-align:center;margin-top:8px">Quand on est très fatigué ou plein de courbatures, le muscle a besoin de récupérer. Une mobilité douce de 5 minutes aide à te sentir mieux.</p>
-          <div class="btn-row"><button class="btn ghost" data-close>Repos complet</button><button class="btn" data-start="M">🧘 Mobilité</button></div>`);
+          <div class="btn-row"><button class="btn ghost" data-close>Repos complet</button><button class="btn" data-start="M">Mobilité</button></div>`);
       }
-      if (fresh.length) toast(`🏅 Nouveau badge : ${fresh.map((x) => x.name).join(', ')}`);
+      if (fresh.length) toast(`Nouveau badge : ${fresh.map((x) => x.name).join(', ')}`);
     }));
   });
 }
@@ -497,13 +497,13 @@ function renderStep() {
     p.innerHTML = playerShell(`
       <div class="player-stage" id="playerStage"></div>
       <div class="cue" id="playerCue"></div>
-      <h2>${ex.emoji} ${esc(ex.name)}</h2>
+      <h2>${esc(ex.name)}</h2>
       <div class="set-info">Série ${step.set} / ${step.sets}</div>
       ${isTime
         ? `<div class="big-timer" id="bigTimer" style="--p:0"><div><b id="timerNum">${fmtTime(step.target)}</b><small class="muted">objectif ${step.target} s</small></div></div>`
         : `<div class="counter"><button data-adj="-1" aria-label="Moins">−</button><div class="num"><span id="repNum">${step.target}</span><small>${esc(unitOf(ex))}</small></div><button data-adj="1" aria-label="Plus">+</button></div>
            <p class="muted" style="text-align:center;font-size:12px">Ajuste si tu en as fait moins ou plus. Qualité avant quantité !</p>`}
-      <details style="margin-top:10px"><summary class="muted" style="cursor:pointer;text-align:center">📋 Rappel des étapes</summary><ol class="steps">${ex.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol></details>
+      <details style="margin-top:10px"><summary class="muted" style="cursor:pointer;text-align:center">Rappel des étapes</summary><ol class="steps">${ex.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol></details>
       <div class="actions">
         ${isTime ? `<button class="btn block" id="timerBtn">▶ Démarrer</button><button class="btn ghost block" data-done>Série terminée ✓</button>` : `<button class="btn block" data-done>Série terminée ✓</button>`}
       </div>`);
@@ -518,7 +518,7 @@ function renderStep() {
       };
       btn.addEventListener('click', () => {
         running = !running;
-        btn.textContent = running ? '⏸ Pause' : '▶ Reprendre';
+        btn.textContent = running ? 'Pause' : '▶ Reprendre';
         if (running) {
           timer = setInterval(() => {
             left--;
@@ -539,10 +539,10 @@ function renderStep() {
     const nx = EXERCISES[step.nextId];
     let left = step.secs;
     p.innerHTML = playerShell(`
-      <div style="text-align:center;margin-top:20px"><span class="pill">😮‍💨 Récupération</span></div>
+      <div style="text-align:center;margin-top:20px"><span class="pill">Récupération</span></div>
       <div class="big-timer" id="bigTimer"><div><b id="timerNum">${fmtTime(left)}</b><small class="muted">repos</small></div></div>
-      <p style="text-align:center">Respire profondément et bois une gorgée d’eau 💧</p>
-      <div class="card" style="margin-top:16px"><div class="card-row"><div style="font-size:32px">${nx.emoji}</div><div><small class="muted">${step.between ? 'Exercice suivant' : 'Série suivante'}</small><h3>${esc(nx.name)}</h3></div></div></div>
+      <p style="text-align:center">Respire profondément et bois une gorgée d’eau </p>
+      <div class="card" style="margin-top:16px"><div class="card-row"><div><small class="muted">${step.between ? 'Exercice suivant' : 'Série suivante'}</small><h3>${esc(nx.name)}</h3></div></div></div>
       <div class="actions"><button class="btn ghost block" data-skip>Passer le repos ›</button></div>`);
     if (playerFigure) { playerFigure.destroy(); playerFigure = null; }
     timer = setInterval(() => {
@@ -555,15 +555,15 @@ function renderStep() {
   } else if (step.kind === 'rate') {
     const ex = EXERCISES[step.id];
     p.innerHTML = playerShell(`
-      <div style="text-align:center;margin-top:30px;font-size:46px">${ex.emoji}</div>
+      <div style="margin-top:30px"></div>
       <h2 style="margin-top:8px">${esc(ex.name)} : terminé !</h2>
       <p class="set-info">Comment était ta technique ? (ça aide le coach à suivre tes progrès)</p>
       <div class="rate-grid">
-        <button data-rate="40"><span>😕</span>Difficile à bien faire</button>
-        <button data-rate="70"><span>🙂</span>Correcte</button>
-        <button data-rate="95"><span>💪</span>Maîtrisée</button>
+        <button data-rate="40"><span class="meter m1"><i></i><i></i><i></i></span>Difficile à bien faire</button>
+        <button data-rate="70"><span class="meter m2"><i></i><i></i><i></i></span>Correcte</button>
+        <button data-rate="95"><span class="meter m3"><i></i><i></i><i></i></span>Maîtrisée</button>
       </div>
-      <div class="info" style="margin-top:18px">💡 ${esc(ex.mistakes[0].label)} ? ${esc(ex.mistakes[0].fix)}</div>`);
+      <div class="info" style="margin-top:18px">${esc(ex.mistakes[0].label)} ? ${esc(ex.mistakes[0].fix)}</div>`);
     if (playerFigure) { playerFigure.destroy(); playerFigure = null; }
     $$('[data-rate]', p).forEach((b) => b.addEventListener('click', () => { session.ratings[step.id] = Number(b.dataset.rate); nextStep(); }));
   }
@@ -580,7 +580,7 @@ function renderSummary() {
   const nbSets = Object.values(session.results).reduce((a, r) => a + r.sets.length, 0);
   const strength = session.type !== 'M';
   $('#player').innerHTML = playerShell(`
-    <div class="celebrate" style="margin-top:20px">🎉</div>
+    <div class="celebrate" style="margin-top:20px">Terminé</div>
     <h2>Séance terminée, bravo !</h2>
     <div class="summary-stats">
       <div class="card stat"><b>${mins}</b><span>minutes</span></div>
@@ -589,11 +589,11 @@ function renderSummary() {
     </div>
     ${strength ? `<p class="set-info">Comment as-tu trouvé cette séance ?</p>
     <div class="rate-grid" id="diffGrid">
-      <button data-diff="easy"><span>😎</span>Trop facile</button>
-      <button data-diff="ok" class="active"><span>👌</span>Parfaite</button>
-      <button data-diff="hard"><span>🥵</span>Trop dure</button>
-    </div>` : '<p class="set-info">La mobilité aide tes muscles à récupérer. 💚</p>'}
-    <div class="info">🥛 Après l’effort : bois de l’eau et prends un repas ou un goûter avec des protéines (ex. yaourt + banane).</div>
+      <button data-diff="easy"><span class="meter m1"><i></i><i></i><i></i></span>Trop facile</button>
+      <button data-diff="ok" class="active"><span class="meter m2"><i></i><i></i><i></i></span>Parfaite</button>
+      <button data-diff="hard"><span class="meter m3"><i></i><i></i><i></i></span>Trop dure</button>
+    </div>` : '<p class="set-info">La mobilité aide tes muscles à récupérer. </p>'}
+    <div class="info">Après l’effort : bois de l’eau et prends un repas ou un goûter avec des protéines (ex. yaourt + banane).</div>
     <div class="actions"><button class="btn block" id="saveSession">Enregistrer ma séance ✓</button></div>`);
   let diff = 'ok';
   $$('[data-diff]').forEach((b) => b.addEventListener('click', () => {
@@ -631,7 +631,7 @@ function saveSession(diff, mins) {
   const fresh = checkBadges();
   closePlayer();
   showView('home');
-  const msg = fresh.length ? `🏅 Nouveau badge : ${fresh.map((b) => b.name).join(', ')} !` : messages[0] || (diff === 'easy' ? '📈 Objectifs augmentés pour la prochaine fois !' : diff === 'hard' ? '👌 Objectifs ajustés : on y va à ton rythme.' : '✅ Séance enregistrée. Bonne récup !');
+  const msg = fresh.length ? `Nouveau badge : ${fresh.map((b) => b.name).join(', ')} !` : messages[0] || (diff === 'easy' ? 'Objectifs augmentés pour la prochaine fois !' : diff === 'hard' ? 'Objectifs ajustés : on y va à ton rythme.' : 'Séance enregistrée. Bonne récup !');
   toast(msg);
 }
 
@@ -657,9 +657,9 @@ function renderPlan() {
         const today = dayKey(d) === dayKey();
         const w = WORKOUTS[p];
         const body = w
-          ? `<h3>${w.emoji} ${esc(w.short)}</h3><small>≈ ${estimateMinutes(p)} min${w.light ? ' · facultatif' : ''}</small>
-             <details><summary>Voir les exercices</summary>${workoutItems(p).map((it) => `<div>• ${EXERCISES[it.id].emoji} ${esc(EXERCISES[it.id].name)} — ${it.sets} × ${levelOf(it.id)} ${EXERCISES[it.id].type === 'time' ? 's' : 'rép.'}</div>`).join('')}</details>`
-          : `<h3>😴 Repos</h3><small>Les muscles se reconstruisent. Bouge en douceur (marche, vélo, jeux).</small>`;
+          ? `<h3>${esc(w.short)}</h3><small>≈ ${estimateMinutes(p)} min${w.light ? ' · facultatif' : ''}</small>
+             <details><summary>Voir les exercices</summary>${workoutItems(p).map((it) => `<div>• ${esc(EXERCISES[it.id].name)} — ${it.sets} × ${levelOf(it.id)} ${EXERCISES[it.id].type === 'time' ? 's' : 'rép.'}</div>`).join('')}</details>`
+          : `<h3>Repos</h3><small>Les muscles se reconstruisent. Bouge en douceur (marche, vélo, jeux).</small>`;
         return `<div class="card day-card ${today ? 'is-today' : ''}">
           <div class="day-badge">${DAY_NAMES[i].slice(0, 3)}<b>${d.getDate()}</b></div>
           <div class="grow">${body}</div>
@@ -670,13 +670,13 @@ function renderPlan() {
 
     <div class="section-title"><h2>Pourquoi la récupération est importante ?</h2></div>
     <div class="card why">
-      <h3>🔬 Le muscle se renforce au repos</h3>
+      <h3>Le muscle se renforce au repos</h3>
       <p>Pendant l’effort, les fibres musculaires subissent de toutes petites lésions. Pendant les 24 à 72 h qui suivent, ton corps les répare et les rend un peu plus solides : c’est la <b>surcompensation</b>. Sans repos, il n’a pas le temps de reconstruire.</p>
-      <h3>🌱 Ton corps grandit</h3>
+      <h3>Ton corps grandit</h3>
       <p>À 14 ans, une grande partie de ton énergie sert à ta croissance (os, muscles, organes). Trop d’entraînement peut voler cette énergie et augmenter le risque de blessure, notamment aux zones de croissance.</p>
-      <h3>🌙 Le sommeil, ton meilleur coach</h3>
+      <h3>Le sommeil, ton meilleur coach</h3>
       <p>L’hormone de croissance est surtout libérée pendant le sommeil profond. 8 à 10 h par nuit = meilleure récupération et plus de progrès.</p>
-      <h3>⚠️ Les signes qu’il faut plus de repos</h3>
+      <h3>Les signes qu’il faut plus de repos</h3>
       <p>Fatigue qui ne passe pas, douleurs, sommeil perturbé, baisse de motivation ou de performance. Dans ce cas, le coach te propose une séance allégée ou du repos.</p>
     </div>
   `;
@@ -686,39 +686,39 @@ function renderPlan() {
 let foodTab = 'meals';
 function renderFood() {
   const el = $('#view-food');
-  const tabs = [['meals', '🍽️ Repas'], ['proteins', '🥚 Protéines'], ['recipes', '👨‍🍳 Recettes halal'], ['water', '💧 Eau'], ['sleep', '🌙 Sommeil']];
+  const tabs = [['meals', 'Repas'], ['proteins', 'Protéines'], ['recipes', 'Recettes halal'], ['water', 'Eau'], ['sleep', 'Sommeil']];
   let content = '';
   if (foodTab === 'meals') {
     content = Object.entries(NUTRITION.meals).map(([k, list]) => `
       <div class="section-title"><h2>${esc(k)}</h2></div>
-      ${list.map((m) => `<div class="card meal"><div class="emo">${m.emoji}</div><div><b>${esc(m.name)}</b><p class="muted" style="font-size:13px">${esc(m.items)}</p></div></div>`).join('')}`).join('') +
+      ${list.map((m) => `<div class="card meal"><div><b>${esc(m.name)}</b><p class="muted" style="font-size:13px">${esc(m.items)}</p></div></div>`).join('')}`).join('') +
       `<div class="section-title"><h2>Les bases</h2></div><div class="card"><ul class="tips">${NUTRITION.rules.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div>`;
   } else if (foodTab === 'proteins') {
     content = `<div class="info">Les protéines aident tes muscles à se réparer. Une portion à chaque repas suffit, sans compléments.</div>
-      <div class="grid-2" style="margin-top:12px">${NUTRITION.proteins.map((p) => `<div class="card" style="margin:0"><div style="font-size:28px">${p.emoji}</div><b style="color:var(--white)">${esc(p.name)}</b><p class="muted" style="font-size:12px">${esc(p.note)}</p></div>`).join('')}</div>`;
+      <div class="grid-2" style="margin-top:12px">${NUTRITION.proteins.map((p) => `<div class="card" style="margin:0"><b style="color:var(--white)">${esc(p.name)}</b><p class="muted" style="font-size:12px">${esc(p.note)}</p></div>`).join('')}</div>`;
   } else if (foodTab === 'recipes') {
     content = NUTRITION.recipes.map((r) => `
       <div class="card recipe" style="margin-top:12px">
-        <h3><span>${r.emoji} ${esc(r.name)}</span><span class="pill">⏱ ${esc(r.time)}</span></h3>
+        <h3><span>${esc(r.name)}</span><span class="pill">${esc(r.time)}</span></h3>
         <ul>${r.ingredients.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>
         <details><summary>Voir la préparation</summary><ol>${r.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol></details>
-      </div>`).join('') + '<div class="info">✅ Toutes les recettes sont halal. Vérifie le label halal des viandes achetées.</div>';
+      </div>`).join('') + '<div class="info">Toutes les recettes sont halal. Vérifie le label halal des viandes achetées.</div>';
   } else if (foodTab === 'water') {
     const n = state.water[dayKey()] || 0;
     content = `<div class="card" style="margin-top:12px;text-align:center">
         <h2>Mes verres d’eau aujourd’hui</h2>
         <div class="glasses">${Array.from({ length: 8 }, (_, i) => `<button class="glass ${i < n ? 'full' : ''}" data-glass="${i + 1}" aria-label="${i + 1} verre(s)"></button>`).join('')}</div>
-        <p><b style="font-size:22px;color:var(--white)">${n}</b> / 7 verres ${n >= 7 ? '🎉 Objectif atteint !' : ''}</p>
+        <p><b style="font-size:22px;color:var(--white)">${n}</b> / 7 verres ${n >= 7 ? 'Objectif atteint !' : ''}</p>
         <div class="btn-row"><button class="btn ghost small" data-water="-1">− 1 verre</button><button class="btn small" data-water="1">+ 1 verre</button></div>
       </div>
       <div class="card"><ul class="tips">${NUTRITION.hydration.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div>`;
   } else {
-    content = `<div class="card glow" style="margin-top:12px;text-align:center"><div style="font-size:44px">🌙</div><h2>8 à 10 h par nuit</h2><p class="muted">C’est la recommandation pour les 13–18 ans.</p></div>
+    content = `<div class="card glow" style="margin-top:12px;text-align:center"><h2>8 à 10 h par nuit</h2><p class="muted">C’est la recommandation pour les 13–18 ans.</p></div>
       <div class="card"><ul class="tips">${NUTRITION.sleep.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div>
-      <div class="card why"><h3>💪 Sommeil et récupération</h3><p>Les jours de repos et les nuits complètes sont aussi importants que les séances. Un muscle fatigué qui ne récupère pas progresse moins et se blesse plus facilement.</p></div>`;
+      <div class="card why"><h3>Sommeil et récupération</h3><p>Les jours de repos et les nuits complètes sont aussi importants que les séances. Un muscle fatigué qui ne récupère pas progresse moins et se blesse plus facilement.</p></div>`;
   }
   el.innerHTML = `
-    <div class="card glow"><h2>🥗 Bien manger, bien récupérer</h2><p class="muted" style="font-size:13px;margin-top:4px">Des idées simples et équilibrées pour grandir et devenir plus fort. Pas de régime, pas de compléments : une alimentation variée suffit.</p></div>
+    <div class="card glow"><h2>Bien manger, bien récupérer</h2><p class="muted" style="font-size:13px;margin-top:4px">Des idées simples et équilibrées pour grandir et devenir plus fort. Pas de régime, pas de compléments : une alimentation variée suffit.</p></div>
     <div class="seg" style="margin-top:12px">${tabs.map(([k, l]) => `<button data-food="${k}" class="${foodTab === k ? 'active' : ''}">${l}</button>`).join('')}</div>
     ${content}`;
 }
@@ -763,7 +763,7 @@ function renderProgress() {
   const thisWeek = strengthThisWeek();
   el.innerHTML = `
     <div class="card glow">
-      <div class="card-row"><div style="font-size:40px">${r.emoji}</div><div style="flex:1"><small class="muted">Ton rang</small><h2>${esc(r.name)}</h2>
+      <div class="card-row"><div style="flex:1"><small class="muted">Ton rang</small><h2>${esc(r.name)}</h2>
       <div class="xp-bar"><i style="width:${toNext}%"></i></div>
       <small class="muted">${state.xp} XP${r.next ? ` · encore ${r.next.xp - state.xp} XP pour « ${esc(r.next.name)} »` : ' · rang maximum !'}</small></div></div>
       <p class="muted" style="font-size:12px;margin-top:10px">Les XP récompensent l’effort et la régularité : +50 par séance, +100 par badge. Aucun classement, aucune comparaison avec les autres.</p>
@@ -785,7 +785,7 @@ function renderProgress() {
         const h = state.technique[id];
         const now = techniqueOf(id), first = h[0];
         const diff = now - first;
-        return `<div class="tech-row"><div class="top"><b>${EXERCISES[id].emoji} ${esc(EXERCISES[id].name)}</b><span>${now}% ${diff > 0 ? `<span style="color:var(--green)">▲ +${diff}</span>` : ''}</span></div><div class="bar"><i style="width:${now}%"></i></div></div>`;
+        return `<div class="tech-row"><div class="top"><b>${esc(EXERCISES[id].name)}</b><span>${now}% ${diff > 0 ? `<span style="color:var(--green)">▲ +${diff}</span>` : ''}</span></div><div class="bar"><i style="width:${now}%"></i></div></div>`;
       }).join('') : '<p class="muted">Termine une séance et évalue ta technique pour voir ta progression ici.</p>'}
       <p class="muted" style="font-size:12px;margin-top:12px">Un exercice est « appris » après 3 séances évaluées. ${learnedIds.length ? 'Appris : ' + learnedIds.map((id) => EXERCISES[id].name).join(', ') + '.' : ''}</p>
     </div>
@@ -796,7 +796,7 @@ function renderProgress() {
         const ex = EXERCISES[g.exId];
         const best = state.best[g.exId] || 0;
         const pct = Math.min(100, Math.round((best / g.target) * 100));
-        return `<div class="goal ${pct >= 100 ? 'done' : ''}"><div style="font-size:24px">${pct >= 100 ? '🥇' : ex.emoji}</div><div class="grow"><b>${g.target} ${ex.type === 'time' ? 's de' : ex.unit ? esc(ex.unit) + ' —' : ''} ${esc(ex.name.toLowerCase())}</b><div class="bar"><i style="width:${pct}%"></i></div><small class="muted">Record : ${best} ${ex.type === 'time' ? 's' : ''}</small></div><button class="del" data-delgoal="${g.id}" aria-label="Supprimer l’objectif">✕</button></div>`;
+        return `<div class="goal ${pct >= 100 ? 'done' : ''}"><div class="grow"><b>${g.target} ${ex.type === 'time' ? 's de' : ex.unit ? esc(ex.unit) + ' —' : ''} ${esc(ex.name.toLowerCase())}</b><div class="bar"><i style="width:${pct}%"></i></div><small class="muted">Record : ${best} ${ex.type === 'time' ? 's' : ''}</small></div><button class="del" data-delgoal="${g.id}" aria-label="Supprimer l’objectif">✕</button></div>`;
       }).join('') : '<p class="muted">Aucun objectif. Ajoutes-en un !</p>'}
       <div class="form-row">
         <select id="goalEx" aria-label="Exercice">${Object.entries(EXERCISES).filter(([id]) => RATED(id)).map(([id, ex]) => `<option value="${id}">${esc(ex.name)}</option>`).join('')}</select>
@@ -812,7 +812,7 @@ function renderProgress() {
 
     <div class="section-title"><h2>Historique</h2></div>
     <div class="card">
-      ${state.sessions.length ? `<ul class="history">${[...state.sessions].reverse().slice(0, 12).map((s) => `<li><span>${new Date(s.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} · ${esc(WORKOUTS[s.workout].short)}${s.light ? ' (allégée)' : ''}</span><span class="muted">${s.minutes} min</span></li>`).join('')}</ul>` : '<p class="muted">Aucune séance pour le moment. Ta première t’attend ! 💪</p>'}
+      ${state.sessions.length ? `<ul class="history">${[...state.sessions].reverse().slice(0, 12).map((s) => `<li><span>${new Date(s.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} · ${esc(WORKOUTS[s.workout].short)}${s.light ? ' (allégée)' : ''}</span><span class="muted">${s.minutes} min</span></li>`).join('')}</ul>` : '<p class="muted">Aucune séance pour le moment. Ta première t’attend ! </p>'}
       <button class="btn ghost small" style="margin-top:14px" id="resetData">Réinitialiser mes données</button>
     </div>
   `;
@@ -868,7 +868,7 @@ function ask(question) {
 function openChat() {
   $('#chat').hidden = false;
   if (!$('#chatLog').children.length) {
-    addMsg(formatBot('Salut ! 👋 Je suis ton coach **ARMUP AI**.\nPose-moi tes questions sur les exercices, l’alimentation, le sommeil ou la récupération. Je respecte toujours les règles de sécurité pour les ados.\nJe fonctionne directement sur ton téléphone : gratuit, sans compte, sans envoyer tes messages sur Internet.'), 'bot');
+    addMsg(formatBot('Salut ! Je suis ton coach **ARMUP AI**.\nPose-moi tes questions sur les exercices, l’alimentation, le sommeil ou la récupération. Je respecte toujours les règles de sécurité pour les ados.\nJe fonctionne directement sur ton téléphone : gratuit, sans compte, sans envoyer tes messages sur Internet.'), 'bot');
     $('#chatSuggest').innerHTML = Assistant.SUGGESTIONS.map((s) => `<button data-ask="${esc(s)}">${esc(s)}</button>`).join('');
   }
   setTimeout(() => $('#chatInput').focus(), 200);
@@ -888,8 +888,8 @@ document.addEventListener('click', (e) => {
   else if (d.cal) { calMonth.setMonth(calMonth.getMonth() + Number(d.cal)); $('#calCard').innerHTML = monthHtml(); }
   else if (d.spw) { state.sessionsPerWeek = Number(d.spw); save(); refresh(); toast(`Programme mis à jour : ${d.spw} séances par semaine.`); }
   else if (d.food) { foodTab = d.food; renderFood(); }
-  else if (d.glass) { const k = dayKey(); const n = Number(d.glass); state.water[k] = state.water[k] === n ? n - 1 : n; save(); const f = checkBadges(); renderFood(); if (f.length) toast(`🏅 Nouveau badge : ${f[0].name}`); }
-  else if (d.water) { const k = dayKey(); state.water[k] = Math.max(0, Math.min(12, (state.water[k] || 0) + Number(d.water))); save(); const f = checkBadges(); renderFood(); if (f.length) toast(`🏅 Nouveau badge : ${f[0].name}`); }
+  else if (d.glass) { const k = dayKey(); const n = Number(d.glass); state.water[k] = state.water[k] === n ? n - 1 : n; save(); const f = checkBadges(); renderFood(); if (f.length) toast(`Nouveau badge : ${f[0].name}`); }
+  else if (d.water) { const k = dayKey(); state.water[k] = Math.max(0, Math.min(12, (state.water[k] || 0) + Number(d.water))); save(); const f = checkBadges(); renderFood(); if (f.length) toast(`Nouveau badge : ${f[0].name}`); }
   else if (d.delgoal) { state.goals = state.goals.filter((g) => g.id !== d.delgoal); save(); renderProgress(); }
   else if (d.tip) $('#chartTip').textContent = d.tip;
   else if (d.ask) ask(d.ask);
